@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Plymovent Finance Reporting Tool</title>
+<style>
+  :root{
+    --yellow:#ffcb1f;
+    --black:#111111;
+    --ink:#232323;
+    --muted:#6f7378;
+    --line:#e5e7eb;
+    --panel:#ffffff;
+    --bg:#f5f6f8;
+    --soft:#fff8d7;
+    --danger:#b42318;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  .app{min-height:100vh}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;position:sticky;top:0;z-index:10}
+  .brand{display:flex;align-items:center;gap:16px}
+  .brand-mark{display:flex;align-items:center;gap:10px}
+  .brand-bars{display:grid;grid-template-columns:repeat(4,7px);gap:3px;height:38px;align-items:end}
+  .brand-bars span:nth-child(1){height:38px;background:#111}.brand-bars span:nth-child(2){height:31px;background:#444}.brand-bars span:nth-child(3){height:24px;background:#999}.brand-bars span:nth-child(4){height:17px;background:var(--yellow)}
+  .brand-name{font-size:25px;font-weight:800;letter-spacing:1.5px;color:#111;line-height:1}
+  .brand-sub{font-size:11px;color:#777;letter-spacing:.4px;margin-top:4px}
+  .header-title{font-weight:700;font-size:15px;color:#555;text-align:right}
+  main{padding:24px 28px 44px;max-width:1800px;margin:auto}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+  .profile-tabs{display:flex;align-items:center;gap:14px}
+  .profile-tab{border:0;background:transparent;cursor:pointer;padding:0;text-align:center;color:#555;font-weight:700;font-size:12px}
+  .profile-icon{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 7px;border:2px solid #d7d9dd;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.06);font-weight:800;font-size:18px;transition:.15s}
+  .profile-tab.active .profile-icon{border:3px solid var(--yellow);box-shadow:0 0 0 4px rgba(255,203,31,.18)}
+  .profile-tab.active{color:#111}
+  .paypal{color:#0070ba}.rtf{color:#111}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  button,.btn{font:inherit}
+  .btn{border:1px solid #d7d9dd;border-radius:8px;background:#fff;padding:10px 14px;font-weight:700;cursor:pointer;color:#333;display:inline-flex;align-items:center;gap:8px}
+  .btn:hover{background:#f8f8f8}
+  .btn.primary{background:var(--yellow);border-color:var(--yellow);color:#111}
+  .btn.dark{background:#171717;color:#fff;border-color:#171717}
+  .summary{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:14px;margin:0 0 18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 17px;box-shadow:0 2px 9px rgba(0,0,0,.025)}
+  .card .label{font-size:12px;color:#70747a;font-weight:700;text-transform:uppercase;letter-spacing:.45px}
+  .card .value{font-size:24px;font-weight:800;margin-top:6px}
+  .filters{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px;margin-bottom:18px}
+  .field label{display:block;font-size:11px;font-weight:800;color:#686c72;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+  select,input{width:100%;border:1px solid #d7d9dd;border-radius:8px;padding:10px 11px;background:#fff;color:#222;outline:none}
+  select:focus,input:focus{border-color:#999;box-shadow:0 0 0 3px rgba(255,203,31,.22)}
+  .table-shell{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .table-meta{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+  .table-meta strong{font-size:14px}.table-meta span{font-size:12px;color:#777}
+  .table-wrap{overflow:auto;max-height:63vh}
+  table{border-collapse:separate;border-spacing:0;width:100%;min-width:1450px}
+  thead th{position:sticky;top:0;z-index:3;background:#f0f1f3;color:#41444a;font-size:11px;text-transform:uppercase;letter-spacing:.35px;text-align:left;padding:12px 11px;border-bottom:1px solid #d8dadd;white-space:nowrap}
+  tbody td{padding:11px;border-bottom:1px solid #eceef0;font-size:13px;white-space:nowrap;background:#fff}
+  tbody tr:hover td{background:#fffdf5}
+  td.money{text-align:right;font-variant-numeric:tabular-nums}
+  .currency-pill,.refund-pill{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:800;font-size:11px;background:#eef2f6;color:#444}
+  .refund-pill.yes{background:#fee4e2;color:#b42318}.refund-pill.no{background:#eaf7ee;color:#297a3a}
+  .row-actions{display:flex;gap:6px}
+  .icon-btn{border:1px solid #ddd;background:#fff;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:12px}
+  .empty{text-align:center;padding:48px;color:#777}
+  dialog{border:0;border-radius:14px;padding:0;box-shadow:0 25px 80px rgba(0,0,0,.28);width:min(920px,94vw)}
+  dialog::backdrop{background:rgba(0,0,0,.42)}
+  .modal-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .modal-head h2{font-size:18px;margin:0}.close{border:0;background:transparent;font-size:24px;cursor:pointer}
+  .modal-body{padding:20px}.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .modal-foot{padding:15px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px}
+  .helper{font-size:11px;color:#777;margin-top:6px}
+  .firebase-note{margin-top:18px;background:var(--soft);border:1px solid #f1dc75;border-radius:10px;padding:12px 14px;font-size:12px;color:#675800;display:none}
+  .toast{position:fixed;right:24px;bottom:24px;background:#171717;color:#fff;padding:11px 14px;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);font-size:13px;opacity:0;pointer-events:none;transform:translateY(8px);transition:.2s;z-index:100}.toast.show{opacity:1;transform:none}
+  @media(max-width:1000px){.summary{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:640px){header{padding:14px 16px}main{padding:18px 14px}.summary,.filters,.form-grid{grid-template-columns:1fr}.brand-name{font-size:20px}.profile-icon{width:56px;height:56px}.header-title{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">
+    <div class="brand-mark" aria-label="Plymovent">
+      <div class="brand-bars"><span></span><span></span><span></span><span></span></div>
+      <div><div class="brand-name">PLYMOVENT</div><div class="brand-sub">clean air at work</div></div>
+    </div>
+  </div>
+  <div class="header-title">Finance Payment Reporting Tool</div>
+</header>
+<main>
+  <div class="topbar">
+    <div class="profile-tabs">
+      <button class="profile-tab active" data-tab="paypal"><span class="profile-icon paypal">P</span><span>PayPal</span></button>
+      <button class="profile-tab" data-tab="rtf"><span class="profile-icon rtf">RTF</span><span>RTF / Shopify</span></button>
+    </div>
+    <div class="actions">
+      <button class="btn" id="clearFiltersBtn">Clear Filters</button>
+      <button class="btn dark" id="downloadBtn">Download Excel</button>
+      <button class="btn primary" id="addBtn">+ Add Entry</button>
+    </div>
+  </div>
+
+  <section class="summary">
+    <div class="card"><div class="label">Visible Entries</div><div class="value" id="countValue">0</div></div>
+    <div class="card"><div class="label">Gross Total</div><div class="value" id="grossValue">$0.00</div></div>
+    <div class="card"><div class="label">Total Fees</div><div class="value" id="feesValue">$0.00</div></div>
+    <div class="card"><div class="label">Net Total</div><div class="value" id="netValue">$0.00</div></div>
+  </section>
+
+  <section class="filters">
+    <div class="field"><label>Month</label><select id="monthFilter"><option value="">All months</option></select></div>
+    <div class="field"><label>Year</label><select id="yearFilter"><option value="">All years</option></select></div>
+    <div class="field"><label>Country</label><select id="countryFilter"><option value="">All countries</option></select></div>
+    <div class="field"><label>Currency</label><select id="currencyFilter"><option value="">All currencies</option><option>USD</option><option>CAD</option></select></div>
+    <div class="field"><label>Search</label><input id="searchFilter" placeholder="SO#, order, customer, email..." /></div>
+  </section>
+
+  <section class="table-shell">
+    <div class="table-meta"><strong id="tableTitle">PayPal Account Report</strong><span id="syncStatus">Local mode</span></div>
+    <div class="table-wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+  <div class="firebase-note" id="firebaseNote">Firebase is not configured yet. The tool is currently saving data in this browser so you can test it. Add your Firebase config in the code to switch to shared Firestore storage.</div>
+</main>
+</div>
+
+<dialog id="entryDialog">
+  <form method="dialog" id="entryForm">
+    <div class="modal-head"><h2 id="modalTitle">Add PayPal Entry</h2><button class="close" value="cancel" type="button" id="closeDialog">×</button></div>
+    <div class="modal-body"><div class="form-grid" id="formGrid"></div></div>
+    <div class="modal-foot"><button class="btn" value="cancel" type="button" id="cancelDialog">Cancel</button><button class="btn primary" type="submit">Save Entry</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+  // =========================
+  // FIREBASE CONFIG
+  // Replace these values with your Firebase project configuration.
+  // Firebase Console > Project settings > Your apps > Web app > SDK setup and configuration
+  // =========================
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.firebasestorage.app",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  const configs = {
+    paypal: {
+      title: "PayPal Account Report",
+      collection: "finance_paypal",
+      columns: [
+        ["paypalAccount","Paypal Account","text"],
+        ["so","SO#","text"],
+        ["currency","Currency","selectCurrency"],
+        ["gross","Gross Amount","number"],
+        ["transactionFee","PayPal Transaction fee","number"],
+        ["internationalFee","International currency payout fee","number"],
+        ["net","Net Total","number"],
+        ["refunded","Refunded","selectRefund"],
+        ["customer","Customer name","text"],
+        ["email","Email","email"],
+        ["country","Customer Country","text"]
+      ]
+    },
+    rtf: {
+      title: "RTF / Shopify Report",
+      collection: "finance_rtf",
+      columns: [
+        ["order","Order","text"],
+        ["date","Date","date"],
+        ["gross","Gross Total","number"],
+        ["shopifyFee","Shopify Payments fee","number"],
+        ["internationalFee","International currency payout fee","number"],
+        ["net","Net Total","number"],
+        ["refunded","Refunded","selectRefund"],
+        ["customer","Customer name","text"],
+        ["email","Email","email"],
+        ["country","Customer Country","text"]
+      ]
+    }
+  };
+
+  let activeTab = "paypal";
+  let allData = { paypal: [], rtf: [] };
+  let editId = null;
+  let db = null;
+  let firebaseReady = false;
+  const moneyKeys = new Set(["gross","transactionFee","internationalFee","shopifyFee","net"]);
+  const $ = s => document.querySelector(s);
+
+  function isConfigured(){ return !Object.values(firebaseConfig).some(v => String(v).includes("YOUR_")); }
+  function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
+  function esc(v){ return String(v ?? "").replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+  function num(v){ const n=parseFloat(v); return Number.isFinite(n)?n:0; }
+  function money(v){ return new Intl.NumberFormat("en-CA",{style:"currency",currency:"USD"}).format(num(v)); }
+
+  async function boot(){
+    buildMonthOptions();
+    if(isConfigured()){
+      try{
+        const app=initializeApp(firebaseConfig); db=getFirestore(app); firebaseReady=true;
+        $("#syncStatus").textContent="Connected to Firebase";
+        subscribe("paypal"); subscribe("rtf");
+      }catch(e){ console.error(e); useLocal(); }
+    }else useLocal();
+    setTab("paypal");
+  }
+  function useLocal(){
+    firebaseReady=false; $("#firebaseNote").style.display="block"; $("#syncStatus").textContent="Browser storage test mode";
+    allData.paypal=JSON.parse(localStorage.getItem("plymovent_finance_paypal")||"[]");
+    allData.rtf=JSON.parse(localStorage.getItem("plymovent_finance_rtf")||"[]");
+  }
+  function subscribe(tab){
+    onSnapshot(collection(db,configs[tab].collection),snap=>{
+      allData[tab]=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(activeTab===tab) render();
+    },err=>{ console.error(err); $("#syncStatus").textContent="Firebase permission/config error"; });
+  }
+  function persistLocal(tab){ localStorage.setItem(`plymovent_finance_${tab}`,JSON.stringify(allData[tab])); }
+
+  function buildMonthOptions(){
+    const names=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    names.forEach((n,i)=>$("#monthFilter").insertAdjacentHTML("beforeend",`<option value="${i+1}">${n}</option>`));
+  }
+  function setTab(tab){
+    activeTab=tab; editId=null;
+    document.querySelectorAll(".profile-tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+    $("#tableTitle").textContent=configs[tab].title;
+    buildTableHeader(); buildForm(); populateDynamicFilters(); render();
+  }
+  function buildTableHeader(){
+    const cols=configs[activeTab].columns;
+    $("#thead").innerHTML=`<tr>${cols.map(c=>`<th>${esc(c[1])}</th>`).join("")}<th>Actions</th></tr>`;
+  }
+  function buildForm(){
+    const cols=configs[activeTab].columns;
+    $("#modalTitle").textContent=`${editId?"Edit":"Add"} ${activeTab==="paypal"?"PayPal":"RTF"} Entry`;
+    $("#formGrid").innerHTML=cols.map(([key,label,type])=>{
+      if(type==="selectCurrency") return `<div class="field"><label>${label}</label><select name="${key}" required><option value="USD">USD</option><option value="CAD">CAD</option></select></div>`;
+      if(type==="selectRefund") return `<div class="field"><label>${label}</label><select name="${key}"><option value="No">No</option><option value="Yes">Yes</option></select></div>`;
+      return `<div class="field"><label>${label}</label><input name="${key}" type="${type}" ${type==="number"?'step="0.01"':''} ${["customer","email","country"].includes(key)?"":"required"}></div>`;
+    }).join("");
+  }
+  function recordDate(r){
+    if(activeTab==="rtf" && r.date) return new Date(r.date+"T00:00:00");
+    if(r.createdAt?.toDate) return r.createdAt.toDate();
+    if(r.createdAt) return new Date(r.createdAt);
+    return null;
+  }
+  function populateDynamicFilters(){
+    const years=new Set(),countries=new Set();
+    allData[activeTab].forEach(r=>{ const d=recordDate(r); if(d&&!isNaN(d)) years.add(d.getFullYear()); if(r.country) countries.add(r.country); });
+    const currentYear=$("#yearFilter").value, currentCountry=$("#countryFilter").value;
+    $("#yearFilter").innerHTML='<option value="">All years</option>'+[...years].sort((a,b)=>b-a).map(v=>`<option>${v}</option>`).join("");
+    $("#countryFilter").innerHTML='<option value="">All countries</option>'+[...countries].sort().map(v=>`<option>${esc(v)}</option>`).join("");
+    $("#yearFilter").value=currentYear; $("#countryFilter").value=currentCountry;
+  }
+  function filtered(){
+    const m=$("#monthFilter").value, y=$("#yearFilter").value, c=$("#countryFilter").value.toLowerCase(), cur=$("#currencyFilter").value, q=$("#searchFilter").value.trim().toLowerCase();
+    return allData[activeTab].filter(r=>{
+      const d=recordDate(r);
+      if(m && (!d || d.getMonth()+1!==+m)) return false;
+      if(y && (!d || d.getFullYear()!==+y)) return false;
+      if(c && String(r.country||"").toLowerCase()!==c) return false;
+      if(cur && String(r.currency||"")!==cur) return false;
+      if(q && !Object.values(r).some(v=>String(v??"").toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }
+  function render(){
+    populateDynamicFilters();
+    const rows=filtered(); const cols=configs[activeTab].columns;
+    $("#tbody").innerHTML=rows.length?rows.map(r=>`<tr>${cols.map(([key,label,type])=>{
+      let v=r[key]??"";
+      if(moneyKeys.has(key)) return `<td class="money">${money(v)}</td>`;
+      if(key==="currency") return `<td><span class="currency-pill">${esc(v)}</span></td>`;
+      if(key==="refunded") return `<td><span class="refund-pill ${String(v).toLowerCase()==="yes"?"yes":"no"}">${esc(v||"No")}</span></td>`;
+      return `<td>${esc(v)}</td>`;
+    }).join("")}<td><div class="row-actions"><button class="icon-btn" data-edit="${r.id}">Edit</button><button class="icon-btn" data-delete="${r.id}">Delete</button></div></td></tr>`).join(""):`<tr><td colspan="${cols.length+1}"><div class="empty">No entries match the current filters.</div></td></tr>`;
+    updateSummary(rows);
+  }
+  function updateSummary(rows){
+    const gross=rows.reduce((s,r)=>s+num(r.gross),0);
+    const fees=rows.reduce((s,r)=>s+num(r.transactionFee)+num(r.shopifyFee)+num(r.internationalFee),0);
+    const net=rows.reduce((s,r)=>s+num(r.net),0);
+    $("#countValue").textContent=rows.length; $("#grossValue").textContent=money(gross); $("#feesValue").textContent=money(fees); $("#netValue").textContent=money(net);
+  }
+  function openAdd(){ editId=null; buildForm(); $("#entryDialog").showModal(); }
+  function openEdit(id){
+    editId=id; buildForm(); const r=allData[activeTab].find(x=>x.id===id); if(!r)return;
+    configs[activeTab].columns.forEach(([key])=>{ const el=$("#entryForm").elements[key]; if(el)el.value=r[key]??""; });
+    $("#modalTitle").textContent=`Edit ${activeTab==="paypal"?"PayPal":"RTF"} Entry`; $("#entryDialog").showModal();
+  }
+  async function saveForm(e){
+    e.preventDefault(); const fd=new FormData(e.target); const obj={};
+    configs[activeTab].columns.forEach(([key,label,type])=>{ let v=fd.get(key); obj[key]=type==="number"?num(v):v; });
+    if(activeTab==="paypal") obj.date = new Date().toISOString().slice(0,10); // used only for month/year filtering of manually entered PayPal records
+    try{
+      if(firebaseReady){
+        if(editId) await updateDoc(doc(db,configs[activeTab].collection,editId),{...obj,updatedAt:serverTimestamp()});
+        else await addDoc(collection(db,configs[activeTab].collection),{...obj,createdAt:serverTimestamp()});
+      }else{
+        if(editId){ const i=allData[activeTab].findIndex(r=>r.id===editId); allData[activeTab][i]={...allData[activeTab][i],...obj}; }
+        else allData[activeTab].unshift({id:crypto.randomUUID(),...obj,createdAt:new Date().toISOString()});
+        persistLocal(activeTab); render();
+      }
+      $("#entryDialog").close(); toast(editId?"Entry updated":"Entry added"); editId=null;
+    }catch(err){console.error(err); toast("Could not save. Check Firebase settings/rules.");}
+  }
+  async function remove(id){
+    if(!confirm("Delete this entry?"))return;
+    try{
+      if(firebaseReady) await deleteDoc(doc(db,configs[activeTab].collection,id));
+      else { allData[activeTab]=allData[activeTab].filter(r=>r.id!==id); persistLocal(activeTab); render(); }
+      toast("Entry deleted");
+    }catch(err){console.error(err);toast("Could not delete entry.");}
+  }
+  function clearFilters(){ ["monthFilter","yearFilter","countryFilter","currencyFilter"].forEach(id=>$("#"+id).value=""); $("#searchFilter").value=""; render(); }
+  function downloadExcel(){
+    if(typeof XLSX==="undefined"){toast("Excel library could not load.");return;}
+    const rows=filtered(); const cols=configs[activeTab].columns;
+    const exportRows=rows.map(r=>Object.fromEntries(cols.map(([key,label])=>[label,r[key]??""])));
+    const ws=XLSX.utils.json_to_sheet(exportRows,{header:cols.map(c=>c[1])});
+    ws["!cols"]=cols.map(c=>({wch:Math.max(14,Math.min(34,c[1].length+5))}));
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,activeTab==="paypal"?"PayPal":"RTF");
+    const date=new Date().toISOString().slice(0,10); XLSX.writeFile(wb,`Plymovent_${activeTab==="paypal"?"PayPal":"RTF"}_Report_${date}.xlsx`);
+  }
+
+  document.querySelectorAll(".profile-tab").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
+  ["monthFilter","yearFilter","countryFilter","currencyFilter"].forEach(id=>$("#"+id).addEventListener("change",render));
+  $("#searchFilter").addEventListener("input",render);
+  $("#addBtn").addEventListener("click",openAdd); $("#downloadBtn").addEventListener("click",downloadExcel); $("#clearFiltersBtn").addEventListener("click",clearFilters);
+  $("#entryForm").addEventListener("submit",saveForm); $("#closeDialog").addEventListener("click",()=>$("#entryDialog").close()); $("#cancelDialog").addEventListener("click",()=>$("#entryDialog").close());
+  $("#tbody").addEventListener("click",e=>{ const edit=e.target.dataset.edit, del=e.target.dataset.delete; if(edit)openEdit(edit); if(del)remove(del); });
+  boot();
+</script>
+</body>
+</html>
