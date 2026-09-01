@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Plymovent Finance Tool build: 2026-09-01-v4 | Firebase Auth + Firestore -->
+<!-- Plymovent Finance Tool build: 2026-09-01-v5 | Firebase Auth + Firestore + Date sorting -->
 <html lang="en">
 <head>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -93,6 +93,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
       <div class="field"><label>Search</label><input id="searchFilter" placeholder="Search by name, email, SO#..." /></div>
     </section>
     <div class="actions">
+      <button class="btn" id="sortDateBtn" type="button">Date: Newest ↓</button>
       <button class="btn" id="clearFiltersBtn">Clear Filters</button>
       <button class="btn" id="uploadCsvBtn">⇧ Upload File</button><input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden><button class="btn primary" id="addBtn">＋ Add Entry</button>
       <div class="download-wrap"><button class="btn dark" id="downloadBtn">⇩ Export ▾</button><div class="download-menu" id="downloadMenu"><button type="button" data-download="selected">Download Selected (<span id="selectedDownloadCount">0</span>)</button><button type="button" data-download="filtered">Download Filtered</button><button type="button" data-download="all">Download All</button></div></div>
@@ -171,6 +172,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
       columns: [
         ["paypalAccount","Paypal Account","text","auto"],
         ["so","SO#","text"],
+        ["date","Date","date"],
         ["currency","Currency","selectCurrency"],
         ["gross","Gross Amount","number"],
         ["transactionFee","PayPal Transaction fee","number"],
@@ -209,6 +211,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   let unsubscribers = [];
   let selectedIds = new Set();
   let pendingImportRows = [];
+  let sortDateDirection = "desc";
   const moneyKeys = new Set(["gross","transactionFee","internationalFee","shopifyFee","net"]);
   const $ = s => document.querySelector(s);
 
@@ -217,6 +220,12 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   function esc(v){ return String(v ?? "").replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
   function num(v){ const n=parseFloat(v); return Number.isFinite(n)?n:0; }
   function money(v){ return new Intl.NumberFormat("en-CA",{style:"currency",currency:"USD"}).format(num(v)); }
+  function formatDisplayDate(v){
+    if(!v) return "—";
+    const d=new Date(String(v)+"T00:00:00");
+    if(isNaN(d)) return esc(v);
+    return d.toLocaleDateString("en-CA",{year:"numeric",month:"short",day:"2-digit"});
+  }
 
   async function boot(){
     buildMonthOptions();
@@ -291,7 +300,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     document.querySelectorAll(".profile-tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
     $("#tableTitle").textContent=configs[tab].title;
     $("#uploadCsvBtn").style.display = tab==="paypal" ? "inline-flex" : "none";
-    buildTableHeader(); buildForm(); populateDynamicFilters(); render();
+    buildTableHeader(); buildForm(); populateDynamicFilters(); updateSortButton(); render();
   }
   function formatHeader(label){
     const breaks={
@@ -310,7 +319,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     const cols=configs[activeTab].columns;
     $("#modalTitle").textContent=`${editId?"Edit":"Add"} ${activeTab==="paypal"?"PayPal":"RTF"} Entry`;
     $("#formGrid").innerHTML=cols.filter(c=>c[3]!=="auto").map(([key,label,type])=>{
-      const requiredKeys = activeTab==="paypal" ? new Set(["so","currency","gross","transactionFee","net"]) : new Set(["order","date","gross","shopifyFee","net"]);
+      const requiredKeys = activeTab==="paypal" ? new Set(["so","date","currency","gross","transactionFee","net"]) : new Set(["order","date","gross","shopifyFee","net"]);
       const req = requiredKeys.has(key) ? "required" : "";
       const optional = requiredKeys.has(key) ? "" : ' <span style="font-weight:500;text-transform:none;color:#999">(optional)</span>';
       if(type==="selectCurrency") return `<div class="field"><label>${label}</label><select name="${key}" ${req}><option value="USD">USD</option><option value="CAD">CAD</option></select></div>`;
@@ -320,7 +329,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     }).join("");
   }
   function recordDate(r){
-    if(activeTab==="rtf" && r.date) return new Date(r.date+"T00:00:00");
+    if(r.date) return new Date(r.date+"T00:00:00");
     if(r.createdAt?.toDate) return r.createdAt.toDate();
     if(r.createdAt) return new Date(r.createdAt);
     return null;
@@ -334,7 +343,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   }
   function filtered(){
     const m=$("#monthFilter").value, y=$("#yearFilter").value, c=$("#countryFilter").value.toLowerCase(), cur=$("#currencyFilter").value, q=$("#searchFilter").value.trim().toLowerCase();
-    return allData[activeTab].filter(r=>{
+    const rows=allData[activeTab].filter(r=>{
       const d=recordDate(r);
       if(m && (!d || d.getMonth()+1!==+m)) return false;
       if(y && (!d || d.getFullYear()!==+y)) return false;
@@ -343,12 +352,19 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
       if(q && !Object.values(r).some(v=>String(v??"").toLowerCase().includes(q))) return false;
       return true;
     });
+    return rows.sort((a,b)=>{
+      const da=recordDate(a), db=recordDate(b);
+      const ta=da&&!isNaN(da)?da.getTime():0;
+      const tb=db&&!isNaN(db)?db.getTime():0;
+      return sortDateDirection==="asc" ? ta-tb : tb-ta;
+    });
   }
   function render(){
     populateDynamicFilters();
     const rows=filtered(); const cols=configs[activeTab].columns;
     $("#tbody").innerHTML=rows.length?rows.map(r=>`<tr><td><input class="row-check row-selector" type="checkbox" data-select="${r.id}" ${selectedIds.has(r.id)?"checked":""} aria-label="Select row"></td>${cols.map(([key,label,type])=>{
       let v=r[key]??"";
+      if(key==="date") return `<td>${formatDisplayDate(v)}</td>`;
       if(moneyKeys.has(key)) return `<td class="money">${money(v)}</td>`;
       if(key==="currency") return `<td style="text-align:center"><span class="currency-pill">${esc(v)}</span></td>`;
       if(key==="refunded") return `<td style="text-align:center"><span class="refund-pill ${String(v).toLowerCase()==="yes"?"yes":"no"}">${esc(v||"No")}</span></td>`;
@@ -516,7 +532,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
         customer:String(row["Customer name"]??row["Customer Name"]??"").trim(),
         email:String(row["Email"]||"").trim(),
         country:normalizeCountryValue(row["Customer Country"]),
-        date:new Date().toISOString().slice(0,10), transactionId:"", sourceSubject:"", importSource:"PayPal XLSX/CSV Report"
+        date:parsePayPalDate(row["Date"]||row["Transaction Date"]||new Date().toISOString().slice(0,10)), transactionId:"", sourceSubject:"", importSource:"PayPal XLSX/CSV Report"
       };
       return {row:imported, skip:!!reason, reason};
     });
@@ -583,6 +599,8 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     }
   }
 
+  function updateSortButton(){ const b=$("#sortDateBtn"); if(b) b.textContent=sortDateDirection==="desc"?"Date: Newest ↓":"Date: Oldest ↑"; }
+  function toggleDateSort(){ sortDateDirection=sortDateDirection==="desc"?"asc":"desc"; updateSortButton(); render(); }
   function clearFilters(){ ["monthFilter","yearFilter","countryFilter","currencyFilter"].forEach(id=>$("#"+id).value=""); $("#searchFilter").value=""; render(); }
   function updateSelectionUI(){
     const n=selectedIds.size;
@@ -639,7 +657,8 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   $("#closeImportDialog").addEventListener("click",()=>$("#importDialog").close());
   $("#cancelImportBtn").addEventListener("click",()=>$("#importDialog").close());
   $("#confirmImportBtn").addEventListener("click",confirmPayPalImport);
-  $("#addBtn").addEventListener("click",openAdd); $("#downloadBtn").addEventListener("click",e=>{ e.stopPropagation(); $("#downloadMenu").classList.toggle("show"); }); $("#clearFiltersBtn").addEventListener("click",clearFilters);
+  $("#addBtn").addEventListener("click",openAdd); $("#downloadBtn").addEventListener("click",e=>{ e.stopPropagation(); $("#downloadMenu").classList.toggle("show"); }); $("#sortDateBtn").addEventListener("click",toggleDateSort);
+  $("#clearFiltersBtn").addEventListener("click",clearFilters);
   $("#downloadMenu").addEventListener("click",e=>{ const mode=e.target.closest("button")?.dataset.download; if(!mode)return; if(mode==="selected" && !selectedIds.size){toast("Select at least one entry first.");return;} downloadExcel(mode); $("#downloadMenu").classList.remove("show"); });
   document.addEventListener("click",()=>$("#downloadMenu").classList.remove("show"));
   $("#clearSelectionBtn").addEventListener("click",()=>{selectedIds.clear();render();});
