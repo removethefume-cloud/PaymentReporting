@@ -20,6 +20,19 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
 @media(max-width:1100px){.toolbar{align-items:stretch;flex-direction:column}.filters{grid-template-columns:repeat(3,1fr)}.actions{justify-content:flex-end}}
 @media(max-width:760px){header{height:auto;padding:12px 16px;position:relative}.divider{display:none}.header-left{gap:12px;width:100%;justify-content:space-between}.header-title{font-size:15px;text-align:right}.brand img{width:205px;max-width:55vw}.nav-row{overflow:auto}.profile-tab{min-width:150px}.summary{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}.toolbar{gap:12px}.actions{width:100%;justify-content:flex-end}.table-wrap{max-height:none}}
 @media(max-width:520px){main{padding:10px}.header-title{display:none}.brand img{width:215px;max-width:80vw}.summary,.filters,.form-grid{grid-template-columns:1fr}.actions{justify-content:stretch;flex-wrap:wrap}.btn{flex:1;justify-content:center}.profile-tabs{width:100%}.profile-tab{min-width:0;flex:1;padding:0 14px}.nav-row{margin-bottom:14px}.card{min-height:82px}.card .value{font-size:20px}}
+
+.upload-preview{width:min(1050px,96vw)}
+.import-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.import-stat{border:1px solid var(--line);border-radius:8px;padding:11px;background:#fafafa}
+.import-stat strong{display:block;font-size:20px;margin-top:4px}
+.import-note{font-size:12px;color:#5f6670;line-height:1.5;margin:0 0 12px}
+.import-table-wrap{max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.import-table{min-width:950px;width:100%}
+.import-table th,.import-table td{font-size:11px;padding:8px 9px}
+.status-good{color:#207a38;font-weight:800}.status-skip{color:#b54708;font-weight:800}
+@media(max-width:760px){.import-summary{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.import-summary{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -49,7 +62,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     </section>
     <div class="actions">
       <button class="btn" id="clearFiltersBtn">Clear Filters</button>
-      <button class="btn primary" id="addBtn">＋ Add Entry</button>
+      <button class="btn" id="uploadCsvBtn">⇧ Upload CSV</button><input type="file" id="csvFileInput" accept=".csv,text/csv" hidden><button class="btn primary" id="addBtn">＋ Add Entry</button>
       <div class="download-wrap"><button class="btn dark" id="downloadBtn">⇩ Export ▾</button><div class="download-menu" id="downloadMenu"><button type="button" data-download="selected">Download Selected (<span id="selectedDownloadCount">0</span>)</button><button type="button" data-download="filtered">Download Filtered</button><button type="button" data-download="all">Download All</button></div></div>
     </div>
   </div>
@@ -76,6 +89,26 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     <div class="modal-foot"><button class="btn" value="cancel" type="button" id="cancelDialog">Cancel</button><button class="btn primary" type="submit">Save Entry</button></div>
   </form>
 </dialog>
+
+<dialog id="importDialog" class="upload-preview">
+  <div class="modal-head"><h2>PayPal CSV Import Preview</h2><button class="close" type="button" id="closeImportDialog">×</button></div>
+  <div class="modal-body">
+    <p class="import-note" id="importNote"></p>
+    <div class="import-summary">
+      <div class="import-stat"><span>Payment rows found</span><strong id="importFound">0</strong></div>
+      <div class="import-stat"><span>Ready to import</span><strong id="importReady">0</strong></div>
+      <div class="import-stat"><span>Skipped</span><strong id="importSkipped">0</strong></div>
+      <div class="import-stat"><span>Refunded</span><strong id="importRefunded">0</strong></div>
+    </div>
+    <div class="import-table-wrap">
+      <table class="import-table">
+        <thead><tr><th>Status</th><th>Date</th><th>SO#</th><th>Currency</th><th>Gross</th><th>PayPal Fee</th><th>Net</th><th>Refunded</th><th>Customer</th><th>Email</th><th>Country</th><th>Reason</th></tr></thead>
+        <tbody id="importPreviewBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="modal-foot"><button class="btn" type="button" id="cancelImportBtn">Cancel</button><button class="btn primary" type="button" id="confirmImportBtn">Import Entries</button></div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -139,6 +172,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   let db = null;
   let firebaseReady = false;
   let selectedIds = new Set();
+  let pendingImportRows = [];
   const moneyKeys = new Set(["gross","transactionFee","internationalFee","shopifyFee","net"]);
   const $ = s => document.querySelector(s);
 
@@ -180,6 +214,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     activeTab=tab; editId=null; selectedIds.clear(); updateSelectionUI();
     document.querySelectorAll(".profile-tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
     $("#tableTitle").textContent=configs[tab].title;
+    $("#uploadCsvBtn").style.display = tab==="paypal" ? "inline-flex" : "none";
     buildTableHeader(); buildForm(); populateDynamicFilters(); render();
   }
   function buildTableHeader(){
@@ -277,6 +312,131 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
       selectedIds.delete(id); updateSelectionUI(); toast("Entry deleted");
     }catch(err){console.error(err);toast("Could not delete entry.");}
   }
+
+  function parsePayPalDate(v){
+    const text=String(v||"").trim();
+    const m=text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m) return `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
+    const d=new Date(text);
+    return isNaN(d) ? new Date().toISOString().slice(0,10) : d.toISOString().slice(0,10);
+  }
+  function parsePayPalAmount(v){
+    const cleaned=String(v??"").replace(/[$,\s]/g,"");
+    const n=parseFloat(cleaned);
+    return Number.isFinite(n)?n:0;
+  }
+  function extractSO(subject){
+    const text=String(subject||"");
+    const m=text.match(/\bSO\s*#?\s*(\d{4,})\b/i);
+    return m ? m[1] : "";
+  }
+  function normalizePayPalCountry(row){
+    const code=String(row["Country Code"]||"").trim().toUpperCase();
+    const country=String(row["Country"]||"").trim().toLowerCase();
+    if(code==="CA" || country==="canada") return "Canada";
+    if(code==="US" || country.includes("united states") || country==="usa") return "USA";
+    return "";
+  }
+  function isPayPalPaymentRow(row){
+    return String(row["Type"]||"").trim()==="Express Checkout Payment"
+      && String(row["Status"]||"").trim()==="Completed"
+      && String(row["Balance Impact"]||"").trim()==="Credit";
+  }
+  function preparePayPalImport(rawRows){
+    const refundRefs=new Set(
+      rawRows.filter(r=>String(r["Type"]||"").trim()==="Payment Refund" && String(r["Status"]||"").trim()==="Completed")
+             .map(r=>String(r["Reference Txn ID"]||"").trim()).filter(Boolean)
+    );
+    const existingTxnIds=new Set(allData.paypal.map(r=>String(r.transactionId||"").trim()).filter(Boolean));
+    const seen=new Set();
+    return rawRows.filter(isPayPalPaymentRow).map(row=>{
+      const transactionId=String(row["Transaction ID"]||"").trim();
+      const so=extractSO(row["Subject"]);
+      let reason="";
+      if(!so) reason="SO# not found in Subject";
+      else if(transactionId && (existingTxnIds.has(transactionId)||seen.has(transactionId))) reason="Already imported";
+      if(transactionId) seen.add(transactionId);
+      const imported={
+        paypalAccount:"PayPal",
+        so,
+        currency:String(row["Currency"]||"").trim().toUpperCase(),
+        gross:Math.abs(parsePayPalAmount(row["Gross"])),
+        transactionFee:Math.abs(parsePayPalAmount(row["Fee"])),
+        internationalFee:0,
+        net:parsePayPalAmount(row["Net"]),
+        refunded:refundRefs.has(transactionId)?"Yes":"No",
+        customer:String(row["Name"]||"").trim(),
+        email:String(row["From Email Address"]||"").trim(),
+        country:normalizePayPalCountry(row),
+        date:parsePayPalDate(row["Date"]),
+        transactionId,
+        sourceSubject:String(row["Subject"]||"").trim(),
+        importSource:"PayPal CSV"
+      };
+      return {row:imported, skip:!!reason, reason};
+    });
+  }
+  function showImportPreview(prepared){
+    pendingImportRows=prepared.filter(x=>!x.skip).map(x=>x.row);
+    const skipped=prepared.filter(x=>x.skip).length;
+    const refunded=prepared.filter(x=>!x.skip && x.row.refunded==="Yes").length;
+    $("#importFound").textContent=prepared.length;
+    $("#importReady").textContent=pendingImportRows.length;
+    $("#importSkipped").textContent=skipped;
+    $("#importRefunded").textContent=refunded;
+    $("#confirmImportBtn").disabled=pendingImportRows.length===0;
+    $("#importNote").textContent='The importer keeps only completed "Express Checkout Payment" credit rows. PayPal hold/debit/memo rows are ignored, SO# is extracted from Subject, and matching refund rows mark the original payment as Refunded = Yes. International currency payout fee defaults to 0 because it is not a dedicated field in this PayPal export.';
+    $("#importPreviewBody").innerHTML=prepared.map(x=>{
+      const r=x.row;
+      return `<tr><td class="${x.skip?"status-skip":"status-good"}">${x.skip?"Skip":"Import"}</td><td>${esc(r.date)}</td><td>${esc(r.so||"—")}</td><td>${esc(r.currency)}</td><td>${money(r.gross)}</td><td>${money(r.transactionFee)}</td><td>${money(r.net)}</td><td>${esc(r.refunded)}</td><td>${esc(r.customer)}</td><td>${esc(r.email)}</td><td>${esc(r.country||"—")}</td><td>${esc(x.reason||"Ready")}</td></tr>`;
+    }).join("") || '<tr><td colspan="12"><div class="empty">No eligible PayPal payment rows were found.</div></td></tr>';
+    $("#importDialog").showModal();
+  }
+  async function handleCsvFile(file){
+    if(!file)return;
+    try{
+      if(typeof XLSX==="undefined") throw new Error("CSV parser library unavailable");
+      const buffer=await file.arrayBuffer();
+      const wb=XLSX.read(buffer,{type:"array",raw:false});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:"",raw:false});
+      if(!rows.length) throw new Error("The CSV file is empty.");
+      const required=["Type","Status","Currency","Gross","Fee","Net","Transaction ID","Subject"];
+      const missing=required.filter(k=>!(k in rows[0]));
+      if(missing.length) throw new Error(`This does not look like the expected PayPal CSV. Missing: ${missing.join(", ")}`);
+      showImportPreview(preparePayPalImport(rows));
+    }catch(err){
+      console.error(err); toast(err.message||"Could not read the PayPal CSV.");
+    }finally{
+      $("#csvFileInput").value="";
+    }
+  }
+  async function confirmPayPalImport(){
+    if(!pendingImportRows.length)return;
+    const btn=$("#confirmImportBtn"); btn.disabled=true; const original=btn.textContent; btn.textContent="Importing...";
+    try{
+      if(firebaseReady){
+        for(const r of pendingImportRows){
+          await addDoc(collection(db,configs.paypal.collection),{...r,createdAt:serverTimestamp()});
+        }
+      }else{
+        const now=new Date().toISOString();
+        const newRows=pendingImportRows.map(r=>({id:crypto.randomUUID(),...r,createdAt:now}));
+        allData.paypal=[...newRows,...allData.paypal];
+        persistLocal("paypal");
+        if(activeTab==="paypal") render();
+      }
+      const count=pendingImportRows.length;
+      pendingImportRows=[];
+      $("#importDialog").close();
+      toast(`${count} PayPal ${count===1?"entry":"entries"} imported`);
+    }catch(err){
+      console.error(err); toast("Import failed. Check Firebase settings/rules.");
+    }finally{
+      btn.disabled=false; btn.textContent=original;
+    }
+  }
+
   function clearFilters(){ ["monthFilter","yearFilter","countryFilter","currencyFilter"].forEach(id=>$("#"+id).value=""); $("#searchFilter").value=""; render(); }
   function updateSelectionUI(){
     const n=selectedIds.size;
@@ -305,6 +465,11 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   document.querySelectorAll(".profile-tab").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
   ["monthFilter","yearFilter","countryFilter","currencyFilter"].forEach(id=>$("#"+id).addEventListener("change",render));
   $("#searchFilter").addEventListener("input",render);
+  $("#uploadCsvBtn").addEventListener("click",()=>$("#csvFileInput").click());
+  $("#csvFileInput").addEventListener("change",e=>handleCsvFile(e.target.files?.[0]));
+  $("#closeImportDialog").addEventListener("click",()=>$("#importDialog").close());
+  $("#cancelImportBtn").addEventListener("click",()=>$("#importDialog").close());
+  $("#confirmImportBtn").addEventListener("click",confirmPayPalImport);
   $("#addBtn").addEventListener("click",openAdd); $("#downloadBtn").addEventListener("click",e=>{ e.stopPropagation(); $("#downloadMenu").classList.toggle("show"); }); $("#clearFiltersBtn").addEventListener("click",clearFilters);
   $("#downloadMenu").addEventListener("click",e=>{ const mode=e.target.closest("button")?.dataset.download; if(!mode)return; if(mode==="selected" && !selectedIds.size){toast("Select at least one entry first.");return;} downloadExcel(mode); $("#downloadMenu").classList.remove("show"); });
   document.addEventListener("click",()=>$("#downloadMenu").classList.remove("show"));
