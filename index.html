@@ -5,103 +5,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Plymovent Finance Reporting Tool</title>
 <style>
-  :root{
-    --yellow:#ffcb1f;
-    --black:#111111;
-    --ink:#232323;
-    --muted:#6f7378;
-    --line:#e5e7eb;
-    --panel:#ffffff;
-    --bg:#f5f6f8;
-    --soft:#fff8d7;
-    --danger:#b42318;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
-  .app{min-height:100vh}
-  header{background:#fff;border-bottom:1px solid var(--line);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;position:sticky;top:0;z-index:10}
-  .brand{display:flex;align-items:center;gap:16px}
-  .brand-mark{display:flex;align-items:center;gap:10px}
-  .brand-bars{display:grid;grid-template-columns:repeat(4,7px);gap:3px;height:38px;align-items:end}
-  .brand-bars span:nth-child(1){height:38px;background:#111}.brand-bars span:nth-child(2){height:31px;background:#444}.brand-bars span:nth-child(3){height:24px;background:#999}.brand-bars span:nth-child(4){height:17px;background:var(--yellow)}
-  .brand-name{font-size:25px;font-weight:800;letter-spacing:1.5px;color:#111;line-height:1}
-  .brand-sub{font-size:11px;color:#777;letter-spacing:.4px;margin-top:4px}
-  .header-title{font-weight:700;font-size:15px;color:#555;text-align:right}
-  main{padding:24px 28px 44px;max-width:1800px;margin:auto}
-  .topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:18px}
-  .profile-tabs{display:flex;align-items:center;gap:14px}
-  .profile-tab{border:0;background:transparent;cursor:pointer;padding:0;text-align:center;color:#555;font-weight:700;font-size:12px}
-  .profile-icon{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 7px;border:2px solid #d7d9dd;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.06);font-weight:800;font-size:18px;transition:.15s}
-  .profile-tab.active .profile-icon{border:3px solid var(--yellow);box-shadow:0 0 0 4px rgba(255,203,31,.18)}
-  .profile-tab.active{color:#111}
-  .paypal{color:#0070ba}.rtf{color:#111}
-  .actions{display:flex;gap:10px;flex-wrap:wrap}
-  button,.btn{font:inherit}
-  .btn{border:1px solid #d7d9dd;border-radius:8px;background:#fff;padding:10px 14px;font-weight:700;cursor:pointer;color:#333;display:inline-flex;align-items:center;gap:8px}
-  .btn:hover{background:#f8f8f8}
-  .btn.primary{background:var(--yellow);border-color:var(--yellow);color:#111}
-  .btn.dark{background:#171717;color:#fff;border-color:#171717}
-  .summary{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:14px;margin:0 0 18px}
-  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 17px;box-shadow:0 2px 9px rgba(0,0,0,.025)}
-  .card .label{font-size:12px;color:#70747a;font-weight:700;text-transform:uppercase;letter-spacing:.45px}
-  .card .value{font-size:24px;font-weight:800;margin-top:6px}
-  .filters{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px;margin-bottom:18px}
-  .field label{display:block;font-size:11px;font-weight:800;color:#686c72;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
-  select,input{width:100%;border:1px solid #d7d9dd;border-radius:8px;padding:10px 11px;background:#fff;color:#222;outline:none}
-  select:focus,input:focus{border-color:#999;box-shadow:0 0 0 3px rgba(255,203,31,.22)}
-  .table-shell{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .table-meta{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
-  .table-meta strong{font-size:14px}.table-meta span{font-size:12px;color:#777}
-  .table-wrap{overflow:auto;max-height:63vh}
-  table{border-collapse:separate;border-spacing:0;width:100%;min-width:1450px}
-  thead th{position:sticky;top:0;z-index:3;background:#f0f1f3;color:#41444a;font-size:11px;text-transform:uppercase;letter-spacing:.35px;text-align:left;padding:12px 11px;border-bottom:1px solid #d8dadd;white-space:nowrap}
-  tbody td{padding:11px;border-bottom:1px solid #eceef0;font-size:13px;white-space:nowrap;background:#fff}
-  tbody tr:hover td{background:#fffdf5}
-  td.money{text-align:right;font-variant-numeric:tabular-nums}
-  .currency-pill,.refund-pill{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:800;font-size:11px;background:#eef2f6;color:#444}
-  .refund-pill.yes{background:#fee4e2;color:#b42318}.refund-pill.no{background:#eaf7ee;color:#297a3a}
-  .row-actions{display:flex;gap:6px}
-  .icon-btn{border:1px solid #ddd;background:#fff;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:12px}
-  .empty{text-align:center;padding:48px;color:#777}
-  dialog{border:0;border-radius:14px;padding:0;box-shadow:0 25px 80px rgba(0,0,0,.28);width:min(920px,94vw)}
-  dialog::backdrop{background:rgba(0,0,0,.42)}
-  .modal-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
-  .modal-head h2{font-size:18px;margin:0}.close{border:0;background:transparent;font-size:24px;cursor:pointer}
-  .modal-body{padding:20px}.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-  .modal-foot{padding:15px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px}
-  .helper{font-size:11px;color:#777;margin-top:6px}
-  .firebase-note{margin-top:18px;background:var(--soft);border:1px solid #f1dc75;border-radius:10px;padding:12px 14px;font-size:12px;color:#675800;display:none}
-  .toast{position:fixed;right:24px;bottom:24px;background:#171717;color:#fff;padding:11px 14px;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);font-size:13px;opacity:0;pointer-events:none;transform:translateY(8px);transition:.2s;z-index:100}.toast.show{opacity:1;transform:none}
-  @media(max-width:1000px){.summary{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:640px){header{padding:14px 16px}main{padding:18px 14px}.summary,.filters,.form-grid{grid-template-columns:1fr}.brand-name{font-size:20px}.profile-icon{width:56px;height:56px}.header-title{display:none}}
+:root{--yellow:#ffcb1f;--yellow2:#eebd00;--black:#121417;--ink:#24272d;--muted:#6c727b;--line:#dfe2e7;--panel:#fff;--bg:#f4f5f6;--soft:#fff8d7;--danger:#d92d20}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+.app{min-height:100vh}
+header{height:88px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 26px;position:sticky;top:0;z-index:30}
+.header-left{display:flex;align-items:center;gap:22px}.brand{display:flex;align-items:center}.brand-mark{display:flex;align-items:center;gap:9px}.brand-name{font-size:26px;font-weight:900;letter-spacing:1.7px;color:#111;line-height:1}.brand-sub{font-size:11px;color:#777;letter-spacing:1.1px;margin-top:4px}.logo-word .accent{display:inline-block;width:9px;height:15px;background:var(--yellow);transform:skew(-12deg);margin:0 1px}
+.divider{width:1px;height:44px;background:#e2e4e8}.header-title{font-weight:800;font-size:19px;color:#20242a}
+.header-profiles{display:flex;align-items:center;gap:10px}.mini-profile{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#e9ebee;font-weight:800;font-size:12px;color:#30343a}.mini-profile.active{background:#f3f3f3;border:2px solid var(--yellow)}.gear{border:0;background:transparent;font-size:20px;color:#42464d;cursor:pointer;padding:6px 8px}
+main{padding:16px 18px 36px;max-width:1760px;margin:auto}.nav-row{display:flex;align-items:stretch;justify-content:space-between;gap:16px;margin-bottom:18px}.profile-tabs{display:flex;gap:0}.profile-tab{height:48px;min-width:182px;border:0;border-right:1px solid #dfe2e6;background:#e9eaed;cursor:pointer;padding:0 24px;display:flex;align-items:center;justify-content:flex-start;gap:10px;font-weight:800;color:#353941;font-size:14px}.profile-tab:first-child{border-radius:7px 0 0 0}.profile-tab:last-child{border-radius:0 7px 0 0}.profile-tab.active{background:linear-gradient(#ffd62e,#f3c400);color:#111;box-shadow:inset 0 -4px 0 #222}.profile-icon{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#111;color:#fff;font-weight:900;font-size:12px;margin:0}.profile-tab.active .profile-icon{box-shadow:none;border:0}.paypal{color:#5aa9e6}.rtf{color:#fff}
+.toolbar{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:16px}.filters{display:grid;grid-template-columns:120px 120px 180px 180px 240px;gap:12px;flex:1}.field label{display:block;font-size:10px;font-weight:800;color:#616771;text-transform:uppercase;letter-spacing:.35px;margin-bottom:6px}.field label span{font-weight:500;text-transform:none;color:#979ca4}select,input{width:100%;height:40px;border:1px solid #cfd3d9;border-radius:7px;padding:8px 10px;background:#fff;color:#222;outline:none;font-size:13px}select:focus,input:focus{border-color:#a8adb5;box-shadow:0 0 0 3px rgba(255,203,31,.22)}.actions{display:flex;gap:10px;align-items:center;white-space:nowrap}.download-wrap{position:relative}.download-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:220px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 16px 40px rgba(0,0,0,.18);padding:5px;display:none;z-index:40}.download-menu.show{display:block}.download-menu button{width:100%;border:0;background:#fff;text-align:left;padding:10px;border-radius:6px;cursor:pointer;font-weight:600;color:#333}.download-menu button:hover{background:#f5f6f8}.btn{height:40px;border:1px solid #cfd3d9;border-radius:7px;background:#fff;padding:0 14px;font-weight:800;cursor:pointer;color:#222;display:inline-flex;align-items:center;gap:7px}.btn:hover{background:#fafafa}.btn.primary{background:var(--yellow);border-color:var(--yellow2);color:#111}.btn.dark{background:#fff;color:#222;border-color:#cfd3d9}
+.summary{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:12px;margin:0 0 16px}.card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px 14px;min-height:92px}.card .label{font-size:11px;color:#666c75;font-weight:700}.card .value{font-size:23px;font-weight:850;margin-top:9px;color:#1e2126}.table-shell{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}.table-meta{height:48px;padding:0 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center}.selection-meta{display:flex;align-items:center;gap:14px}.selection-meta strong{font-size:12px;color:#777;font-weight:600}.selection-count{font-size:12px;color:#3e434a;font-weight:700}.clear-selection{border:1px solid #ddd;background:#fff;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:11px}.table-meta>span{font-size:11px;color:#89909a}.table-wrap{overflow:auto;max-height:61vh}table{border-collapse:separate;border-spacing:0;width:100%;min-width:1450px}thead th{position:sticky;top:0;z-index:3;background:#f5f5f6;color:#454a52;font-size:10px;text-transform:none;letter-spacing:0;text-align:left;padding:11px 10px;border-bottom:1px solid #d8dadd;white-space:nowrap}tbody td{padding:10px;border-bottom:1px solid #eceef0;font-size:12px;white-space:nowrap;background:#fff}tbody tr:hover td{background:#fffdf4}.row-check{width:15px;height:15px;accent-color:#111;cursor:pointer}td.money{text-align:right;font-variant-numeric:tabular-nums}.currency-pill,.refund-pill{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:700;font-size:10px;background:#eef2f6;color:#444}.refund-pill.yes{background:#fee4e2;color:#b42318}.refund-pill.no{background:#eaf7ee;color:#297a3a}.row-actions{display:flex;gap:5px}.icon-btn{border:0;background:transparent;border-radius:5px;padding:4px 6px;cursor:pointer;font-size:13px}.empty{text-align:center;padding:44px;color:#777}
+dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.32);width:min(760px,94vw)}dialog::backdrop{background:rgba(33,37,41,.52)}.modal-head{padding:18px 18px 14px;display:flex;justify-content:space-between;align-items:center}.modal-head h2{font-size:17px;margin:0;font-weight:850}.close{border:0;background:transparent;font-size:24px;cursor:pointer}.modal-body{padding:4px 18px 18px}.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 10px}.modal-foot{padding:14px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:9px}.helper{font-size:11px;color:#777;margin-top:6px}.firebase-note{margin-top:14px;background:var(--soft);border:1px solid #f1dc75;border-radius:8px;padding:11px 13px;font-size:11px;color:#675800;display:none}.toast{position:fixed;right:24px;bottom:24px;background:#171717;color:#fff;padding:11px 14px;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.25);font-size:13px;opacity:0;pointer-events:none;transform:translateY(8px);transition:.2s;z-index:100}.toast.show{opacity:1;transform:none}
+@media(max-width:1100px){.toolbar{align-items:stretch;flex-direction:column}.filters{grid-template-columns:repeat(3,1fr)}.actions{justify-content:flex-end}}
+@media(max-width:760px){header{height:auto;padding:14px 16px}.header-profiles{display:none}.divider{display:none}.header-left{gap:12px}.header-title{font-size:15px}.brand-name{font-size:20px}.nav-row{overflow:auto}.profile-tab{min-width:150px}.summary{grid-template-columns:repeat(2,1fr)}.filters{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){main{padding:12px}.header-title{display:none}.summary,.filters,.form-grid{grid-template-columns:1fr}.actions{justify-content:stretch;flex-wrap:wrap}.btn{flex:1;justify-content:center}}
 </style>
 </head>
 <body>
 <div class="app">
 <header>
-  <div class="brand">
-    <div class="brand-mark" aria-label="Plymovent">
-      <div class="brand-bars"><span></span><span></span><span></span><span></span></div>
-      <div><div class="brand-name">PLYMOVENT</div><div class="brand-sub">clean air at work</div></div>
+  <div class="header-left">
+    <div class="brand" aria-label="Plymovent">
+      <div class="brand-mark"><div><div class="brand-name logo-word">PLYM<span class="accent"></span>VENT</div><div class="brand-sub">clean air at work</div></div></div>
     </div>
+    <div class="divider"></div>
+    <div class="header-title">Finance Reporting Tool</div>
   </div>
-  <div class="header-title">Finance Payment Reporting Tool</div>
+  <div class="header-profiles">
+    <div class="mini-profile active">VP</div><div class="mini-profile">IS</div><button class="gear" type="button" aria-label="Settings">⚙</button>
+  </div>
 </header>
 <main>
-  <div class="topbar">
+  <div class="nav-row">
     <div class="profile-tabs">
       <button class="profile-tab active" data-tab="paypal"><span class="profile-icon paypal">P</span><span>PayPal</span></button>
-      <button class="profile-tab" data-tab="rtf"><span class="profile-icon rtf">RTF</span><span>RTF / Shopify</span></button>
+      <button class="profile-tab" data-tab="rtf"><span class="profile-icon rtf">R</span><span>RTF / Shopify</span></button>
     </div>
+  </div>
+
+  <div class="toolbar">
+    <section class="filters">
+      <div class="field"><label>Month</label><select id="monthFilter"><option value="">All months</option></select></div>
+      <div class="field"><label>Year</label><select id="yearFilter"><option value="">All years</option></select></div>
+      <div class="field"><label>Country</label><select id="countryFilter"><option value="">All countries</option></select></div>
+      <div class="field"><label>Currency</label><select id="currencyFilter"><option value="">All currencies</option><option>USD</option><option>CAD</option></select></div>
+      <div class="field"><label>Search</label><input id="searchFilter" placeholder="Search by name, email, SO#..." /></div>
+    </section>
     <div class="actions">
       <button class="btn" id="clearFiltersBtn">Clear Filters</button>
-      <button class="btn dark" id="downloadBtn">Download Excel</button>
-      <button class="btn primary" id="addBtn">+ Add Entry</button>
+      <button class="btn primary" id="addBtn">＋ Add Entry</button>
+      <div class="download-wrap"><button class="btn dark" id="downloadBtn">⇩ Export ▾</button><div class="download-menu" id="downloadMenu"><button type="button" data-download="selected">Download Selected (<span id="selectedDownloadCount">0</span>)</button><button type="button" data-download="filtered">Download Filtered</button><button type="button" data-download="all">Download All</button></div></div>
     </div>
   </div>
 
   <section class="summary">
-    <div class="card"><div class="label">Visible Entries</div><div class="value" id="countValue">0</div></div>
+    <div class="card"><div class="label">Total Entries</div><div class="value" id="countValue">0</div></div>
     <div class="card"><div class="label">Gross Total</div><div class="value" id="grossValue">$0.00</div></div>
     <div class="card"><div class="label">Total Fees</div><div class="value" id="feesValue">$0.00</div></div>
     <div class="card"><div class="label">Net Total</div><div class="value" id="netValue">$0.00</div></div>
@@ -116,7 +75,7 @@
   </section>
 
   <section class="table-shell">
-    <div class="table-meta"><strong id="tableTitle">PayPal Account Report</strong><span id="syncStatus">Local mode</span></div>
+    <div class="table-meta"><div class="selection-meta"><strong id="tableTitle">PayPal Account Report</strong><span class="selection-count" id="selectionCount">0 selected</span><button class="clear-selection" id="clearSelectionBtn" type="button" style="display:none">Clear selection</button></div><span id="syncStatus">Local mode</span></div>
     <div class="table-wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
   </section>
   <div class="firebase-note" id="firebaseNote">Firebase is not configured yet. The tool is currently saving data in this browser so you can test it. Add your Firebase config in the code to switch to shared Firestore storage.</div>
@@ -156,7 +115,7 @@
       title: "PayPal Account Report",
       collection: "finance_paypal",
       columns: [
-        ["paypalAccount","Paypal Account","text"],
+        ["paypalAccount","Paypal Account","text","auto"],
         ["so","SO#","text"],
         ["currency","Currency","selectCurrency"],
         ["gross","Gross Amount","number"],
@@ -192,6 +151,7 @@
   let editId = null;
   let db = null;
   let firebaseReady = false;
+  let selectedIds = new Set();
   const moneyKeys = new Set(["gross","transactionFee","internationalFee","shopifyFee","net"]);
   const $ = s => document.querySelector(s);
 
@@ -230,22 +190,26 @@
     names.forEach((n,i)=>$("#monthFilter").insertAdjacentHTML("beforeend",`<option value="${i+1}">${n}</option>`));
   }
   function setTab(tab){
-    activeTab=tab; editId=null;
+    activeTab=tab; editId=null; selectedIds.clear(); updateSelectionUI();
     document.querySelectorAll(".profile-tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
     $("#tableTitle").textContent=configs[tab].title;
     buildTableHeader(); buildForm(); populateDynamicFilters(); render();
   }
   function buildTableHeader(){
     const cols=configs[activeTab].columns;
-    $("#thead").innerHTML=`<tr>${cols.map(c=>`<th>${esc(c[1])}</th>`).join("")}<th>Actions</th></tr>`;
+    $("#thead").innerHTML=`<tr><th><input class="row-check" type="checkbox" id="selectAllVisible" aria-label="Select all visible rows"></th>${cols.map(c=>`<th>${esc(c[1])}</th>`).join("")}<th>Actions</th></tr>`;
+    const box=$("#selectAllVisible"); if(box) box.addEventListener("change",()=>{ const rows=filtered(); rows.forEach(r=>box.checked?selectedIds.add(r.id):selectedIds.delete(r.id)); render(); });
   }
   function buildForm(){
     const cols=configs[activeTab].columns;
     $("#modalTitle").textContent=`${editId?"Edit":"Add"} ${activeTab==="paypal"?"PayPal":"RTF"} Entry`;
-    $("#formGrid").innerHTML=cols.map(([key,label,type])=>{
-      if(type==="selectCurrency") return `<div class="field"><label>${label}</label><select name="${key}" required><option value="USD">USD</option><option value="CAD">CAD</option></select></div>`;
-      if(type==="selectRefund") return `<div class="field"><label>${label}</label><select name="${key}"><option value="No">No</option><option value="Yes">Yes</option></select></div>`;
-      return `<div class="field"><label>${label}</label><input name="${key}" type="${type}" ${type==="number"?'step="0.01"':''} ${["customer","email","country"].includes(key)?"":"required"}></div>`;
+    $("#formGrid").innerHTML=cols.filter(c=>c[3]!=="auto").map(([key,label,type])=>{
+      const requiredKeys = activeTab==="paypal" ? new Set(["so","currency","gross","transactionFee","net"]) : new Set(["order","date","gross","shopifyFee","net"]);
+      const req = requiredKeys.has(key) ? "required" : "";
+      const optional = requiredKeys.has(key) ? "" : ' <span style="font-weight:500;text-transform:none;color:#999">(optional)</span>';
+      if(type==="selectCurrency") return `<div class="field"><label>${label}</label><select name="${key}" ${req}><option value="USD">USD</option><option value="CAD">CAD</option></select></div>`;
+      if(type==="selectRefund") return `<div class="field"><label>${label}${optional}</label><select name="${key}"><option value="No">No</option><option value="Yes">Yes</option></select></div>`;
+      return `<div class="field"><label>${label}${optional}</label><input name="${key}" type="${type}" ${type==="number"?'step="0.01"':''} ${req}></div>`;
     }).join("");
   }
   function recordDate(r){
@@ -277,14 +241,15 @@
   function render(){
     populateDynamicFilters();
     const rows=filtered(); const cols=configs[activeTab].columns;
-    $("#tbody").innerHTML=rows.length?rows.map(r=>`<tr>${cols.map(([key,label,type])=>{
+    $("#tbody").innerHTML=rows.length?rows.map(r=>`<tr><td><input class="row-check row-selector" type="checkbox" data-select="${r.id}" ${selectedIds.has(r.id)?"checked":""} aria-label="Select row"></td>${cols.map(([key,label,type])=>{
       let v=r[key]??"";
       if(moneyKeys.has(key)) return `<td class="money">${money(v)}</td>`;
       if(key==="currency") return `<td><span class="currency-pill">${esc(v)}</span></td>`;
       if(key==="refunded") return `<td><span class="refund-pill ${String(v).toLowerCase()==="yes"?"yes":"no"}">${esc(v||"No")}</span></td>`;
       return `<td>${esc(v)}</td>`;
-    }).join("")}<td><div class="row-actions"><button class="icon-btn" data-edit="${r.id}">Edit</button><button class="icon-btn" data-delete="${r.id}">Delete</button></div></td></tr>`).join(""):`<tr><td colspan="${cols.length+1}"><div class="empty">No entries match the current filters.</div></td></tr>`;
-    updateSummary(rows);
+    }).join("")}<td><div class="row-actions"><button class="icon-btn" data-edit="${r.id}">Edit</button><button class="icon-btn" data-delete="${r.id}">Delete</button></div></td></tr>`).join(""):`<tr><td colspan="${cols.length+2}"><div class="empty">No entries match the current filters.</div></td></tr>`;
+    updateSummary(rows); updateSelectionUI();
+    const selectAll=$("#selectAllVisible"); if(selectAll && rows.length){ selectAll.checked=rows.every(r=>selectedIds.has(r.id)); selectAll.indeterminate=!selectAll.checked && rows.some(r=>selectedIds.has(r.id)); }
   }
   function updateSummary(rows){
     const gross=rows.reduce((s,r)=>s+num(r.gross),0);
@@ -300,8 +265,11 @@
   }
   async function saveForm(e){
     e.preventDefault(); const fd=new FormData(e.target); const obj={};
-    configs[activeTab].columns.forEach(([key,label,type])=>{ let v=fd.get(key); obj[key]=type==="number"?num(v):v; });
-    if(activeTab==="paypal") obj.date = new Date().toISOString().slice(0,10); // used only for month/year filtering of manually entered PayPal records
+    configs[activeTab].columns.forEach(([key,label,type,mode])=>{
+      if(mode==="auto") return;
+      let v=fd.get(key); obj[key]=type==="number"?(v===""?0:num(v)):(v??"");
+    });
+    if(activeTab==="paypal"){ obj.paypalAccount="PayPal"; obj.date = new Date().toISOString().slice(0,10); } // account is automatic; date supports month/year filtering
     try{
       if(firebaseReady){
         if(editId) await updateDoc(doc(db,configs[activeTab].collection,editId),{...obj,updatedAt:serverTimestamp()});
@@ -319,26 +287,43 @@
     try{
       if(firebaseReady) await deleteDoc(doc(db,configs[activeTab].collection,id));
       else { allData[activeTab]=allData[activeTab].filter(r=>r.id!==id); persistLocal(activeTab); render(); }
-      toast("Entry deleted");
+      selectedIds.delete(id); updateSelectionUI(); toast("Entry deleted");
     }catch(err){console.error(err);toast("Could not delete entry.");}
   }
   function clearFilters(){ ["monthFilter","yearFilter","countryFilter","currencyFilter"].forEach(id=>$("#"+id).value=""); $("#searchFilter").value=""; render(); }
-  function downloadExcel(){
+  function updateSelectionUI(){
+    const n=selectedIds.size;
+    $("#selectionCount").textContent=`${n} selected`;
+    $("#selectedDownloadCount").textContent=n;
+    $("#clearSelectionBtn").style.display=n?"inline-block":"none";
+  }
+  function exportRowsToExcel(rows, suffix){
     if(typeof XLSX==="undefined"){toast("Excel library could not load.");return;}
-    const rows=filtered(); const cols=configs[activeTab].columns;
+    if(!rows.length){toast("No entries available to download.");return;}
+    const cols=configs[activeTab].columns;
     const exportRows=rows.map(r=>Object.fromEntries(cols.map(([key,label])=>[label,r[key]??""])));
     const ws=XLSX.utils.json_to_sheet(exportRows,{header:cols.map(c=>c[1])});
     ws["!cols"]=cols.map(c=>({wch:Math.max(14,Math.min(34,c[1].length+5))}));
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,activeTab==="paypal"?"PayPal":"RTF");
-    const date=new Date().toISOString().slice(0,10); XLSX.writeFile(wb,`Plymovent_${activeTab==="paypal"?"PayPal":"RTF"}_Report_${date}.xlsx`);
+    const date=new Date().toISOString().slice(0,10); XLSX.writeFile(wb,`Plymovent_${activeTab==="paypal"?"PayPal":"RTF"}_${suffix}_${date}.xlsx`);
+  }
+  function downloadExcel(mode="filtered"){
+    let rows;
+    if(mode==="selected") rows=allData[activeTab].filter(r=>selectedIds.has(r.id));
+    else if(mode==="all") rows=allData[activeTab];
+    else rows=filtered();
+    exportRowsToExcel(rows,mode.charAt(0).toUpperCase()+mode.slice(1));
   }
 
   document.querySelectorAll(".profile-tab").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
   ["monthFilter","yearFilter","countryFilter","currencyFilter"].forEach(id=>$("#"+id).addEventListener("change",render));
   $("#searchFilter").addEventListener("input",render);
-  $("#addBtn").addEventListener("click",openAdd); $("#downloadBtn").addEventListener("click",downloadExcel); $("#clearFiltersBtn").addEventListener("click",clearFilters);
+  $("#addBtn").addEventListener("click",openAdd); $("#downloadBtn").addEventListener("click",e=>{ e.stopPropagation(); $("#downloadMenu").classList.toggle("show"); }); $("#clearFiltersBtn").addEventListener("click",clearFilters);
+  $("#downloadMenu").addEventListener("click",e=>{ const mode=e.target.closest("button")?.dataset.download; if(!mode)return; if(mode==="selected" && !selectedIds.size){toast("Select at least one entry first.");return;} downloadExcel(mode); $("#downloadMenu").classList.remove("show"); });
+  document.addEventListener("click",()=>$("#downloadMenu").classList.remove("show"));
+  $("#clearSelectionBtn").addEventListener("click",()=>{selectedIds.clear();render();});
   $("#entryForm").addEventListener("submit",saveForm); $("#closeDialog").addEventListener("click",()=>$("#entryDialog").close()); $("#cancelDialog").addEventListener("click",()=>$("#entryDialog").close());
-  $("#tbody").addEventListener("click",e=>{ const edit=e.target.dataset.edit, del=e.target.dataset.delete; if(edit)openEdit(edit); if(del)remove(del); });
+  $("#tbody").addEventListener("click",e=>{ const id=e.target.dataset.select; if(id){ e.target.checked?selectedIds.add(id):selectedIds.delete(id); updateSelectionUI(); const rows=filtered(); const box=$("#selectAllVisible"); if(box){box.checked=rows.length>0&&rows.every(r=>selectedIds.has(r.id)); box.indeterminate=!box.checked&&rows.some(r=>selectedIds.has(r.id));} return;} const edit=e.target.dataset.edit, del=e.target.dataset.delete; if(edit)openEdit(edit); if(del)remove(del); });
   boot();
 </script>
 </body>
