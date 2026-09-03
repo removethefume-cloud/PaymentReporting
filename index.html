@@ -296,11 +296,19 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     const names=["January","February","March","April","May","June","July","August","September","October","November","December"];
     names.forEach((n,i)=>$("#monthFilter").insertAdjacentHTML("beforeend",`<option value="${i+1}">${n}</option>`));
   }
+  const uploadAllowedEmails = new Set([
+    "varun.phull@plymovent.com",
+    "zyaam.ali@plymovent.com"
+  ]);
+  function canUpload(){
+    const email=String(auth?.currentUser?.email||"").trim().toLowerCase();
+    return uploadAllowedEmails.has(email);
+  }
   function setTab(tab){
     activeTab=tab; editId=null; selectedIds.clear(); updateSelectionUI();
     document.querySelectorAll(".profile-tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
     $("#tableTitle").textContent=configs[tab].title;
-    $("#uploadCsvBtn").style.display = "inline-flex";
+    $("#uploadCsvBtn").style.display = canUpload() ? "inline-flex" : "none";
     buildTableHeader(); buildForm(); populateDynamicFilters(); updateSortButton(); render();
   }
   function formatHeader(label){
