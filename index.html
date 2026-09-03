@@ -376,7 +376,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     $("#tbody").innerHTML=rows.length?rows.map(r=>`<tr><td><input class="row-check row-selector" type="checkbox" data-select="${r.id}" ${selectedIds.has(r.id)?"checked":""} aria-label="Select row"></td>${cols.map(([key,label,type])=>{
       let v=r[key]??"";
       if(key==="date") return `<td>${formatDisplayDate(v)}</td>`;
-      if(moneyKeys.has(key)) return `<td class="money">${activeTab==="rtf" ? plainAmount(v) : money(v)}</td>`;
+      if(moneyKeys.has(key)) return `<td class="money">${plainAmount(v)}</td>`;
       if(key==="currency") return `<td style="text-align:center"><span class="currency-pill">${esc(v)}</span></td>`;
       if(key==="refunded") return `<td style="text-align:center"><span class="refund-pill ${String(v).toLowerCase()==="yes"?"yes":"no"}">${esc(v||"No")}</span></td>`;
       return `<td>${esc(v)}</td>`;
