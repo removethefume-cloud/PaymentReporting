@@ -458,9 +458,24 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     return isNaN(d) ? new Date().toISOString().slice(0,10) : d.toISOString().slice(0,10);
   }
   function parsePayPalAmount(v){
-    const cleaned=String(v??"").replace(/[$,\s]/g,"");
-    const n=parseFloat(cleaned);
-    return Number.isFinite(n)?n:0;
+    // Supports plain numbers as well as formatted values such as US$2,345.67 and CA$345.00.
+    const text=String(v??"").trim();
+    const negativeByParens=/^\(.*\)$/.test(text);
+    const cleaned=text.replace(/[^0-9.\-]/g,"");
+    let n=parseFloat(cleaned);
+    if(!Number.isFinite(n)) return 0;
+    if(negativeByParens && n>0) n=-n;
+    return n;
+  }
+  function inferCurrencyFromValue(value){
+    const text=String(value??"").trim().toUpperCase();
+    if(!text) return "";
+    // Shopify exports may show the currency inside the amount instead of in a separate column.
+    if(/(?:^|\s)(?:US\$|USD\s*\$?|\$\s*USD)(?:\s|\d|[-+(])/i.test(text) || text.startsWith("US$")) return "USD";
+    if(/(?:^|\s)(?:CA\$|CAD\s*\$?|C\$|\$\s*CAD)(?:\s|\d|[-+(])/i.test(text) || text.startsWith("CA$") || text.startsWith("C$")) return "CAD";
+    if(/\bUSD\b/i.test(text)) return "USD";
+    if(/\bCAD\b/i.test(text)) return "CAD";
+    return "";
   }
   function extractSO(subject){
     const text=String(subject||"");
@@ -558,7 +573,12 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
       const orderKey=order.toUpperCase();
       const rawDate=String(row["Transaction Date"]||"").trim();
       const date=rawDate ? rawDate.slice(0,10) : "";
-      const currency=String(row["Currency"]||row["Presentment Currency"]||"").trim().toUpperCase();
+      const explicitCurrency=String(row["Currency"]||row["Presentment Currency"]||"").trim().toUpperCase();
+      const currency=explicitCurrency
+        || inferCurrencyFromValue(row["Amount"])
+        || inferCurrencyFromValue(row["Presentment Amount"])
+        || inferCurrencyFromValue(row["Net"])
+        || inferCurrencyFromValue(row["Fee"]);
       const gross=Math.abs(parsePayPalAmount(row["Amount"]));
       const shopifyFee=Math.abs(parsePayPalAmount(row["Fee"]));
       const net=parsePayPalAmount(row["Net"]);
@@ -591,7 +611,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     if(tab==="rtf"){
       $("#importDialogTitle").textContent="RTF / Shopify File Import Preview";
       $("#importFoundLabel").textContent="Transaction rows found";
-      $("#importNote").textContent="The Shopify importer uses only the fields needed by this portal: Order, Transaction Date, Currency, Amount, Fee and Net. Existing order numbers are skipped automatically. All other Shopify export columns are ignored.";
+      $("#importNote").textContent="The Shopify importer uses only the fields needed by this portal: Order, Transaction Date, Amount, Fee and Net. Currency is read from the Shopify currency field when available, or detected automatically from formatted amounts such as US$ or CA$. Existing order numbers are skipped automatically. All other Shopify export columns are ignored.";
       $("#importPreviewHead").innerHTML='<tr><th>Status</th><th>Date</th><th>Order</th><th>Currency</th><th>Gross</th><th>Shopify Fee</th><th>Net</th><th>Refunded</th><th>Reason</th></tr>';
       $("#importPreviewBody").innerHTML=prepared.map(x=>{ const r=x.row; return `<tr><td class="${x.skip?"status-skip":"status-good"}">${x.skip?"Skip":"Import"}</td><td>${esc(r.date)}</td><td>${esc(r.order||"—")}</td><td>${esc(r.currency||"—")}</td><td>${money(r.gross)}</td><td>${money(r.shopifyFee)}</td><td>${money(r.net)}</td><td>${esc(r.refunded)}</td><td>${esc(x.reason||"Ready")}</td></tr>`; }).join("") || '<tr><td colspan="9"><div class="empty">No Shopify transaction rows were found.</div></td></tr>';
     }else{
