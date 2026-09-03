@@ -190,6 +190,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
       columns: [
         ["order","Order","text"],
         ["date","Date","date"],
+        ["currency","Currency","selectCurrency"],
         ["gross","Gross Total","number"],
         ["shopifyFee","Shopify Payments fee","number"],
         ["internationalFee","International currency payout fee","number"],
@@ -328,7 +329,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     const cols=configs[activeTab].columns;
     $("#modalTitle").textContent=`${editId?"Edit":"Add"} ${activeTab==="paypal"?"PayPal":"RTF"} Entry`;
     $("#formGrid").innerHTML=cols.filter(c=>c[3]!=="auto").map(([key,label,type])=>{
-      const requiredKeys = activeTab==="paypal" ? new Set(["so","date","currency","gross","transactionFee","net"]) : new Set(["order","date","gross","shopifyFee","net"]);
+      const requiredKeys = activeTab==="paypal" ? new Set(["so","date","currency","gross","transactionFee","net"]) : new Set(["order","date","currency","gross","shopifyFee","net"]);
       const req = requiredKeys.has(key) ? "required" : "";
       const optional = requiredKeys.has(key) ? "" : ' <span style="font-weight:500;text-transform:none;color:#999">(optional)</span>';
       if(type==="selectCurrency") return `<div class="field"><label>${label}</label><select name="${key}" ${req}><option value="USD">USD</option><option value="CAD">CAD</option></select></div>`;
@@ -548,23 +549,28 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   }
 
   function prepareShopifyImport(rawRows){
-    const existingFingerprints=new Set(allData.rtf.map(r=>`${String(r.order||"").trim()}|${String(r.date||"").trim()}|${num(r.gross).toFixed(2)}`));
-    const seen=new Set();
+    // Shopify orders are unique in this portal. If an order already exists,
+    // it can only be imported again after that order is deleted from the portal.
+    const existingOrders=new Set(allData.rtf.map(r=>String(r.order||"").trim().toUpperCase()).filter(Boolean));
+    const seenOrders=new Set();
     return rawRows.map(row=>{
       const order=String(row["Order"]||"").trim();
+      const orderKey=order.toUpperCase();
       const rawDate=String(row["Transaction Date"]||"").trim();
       const date=rawDate ? rawDate.slice(0,10) : "";
+      const currency=String(row["Currency"]||row["Presentment Currency"]||"").trim().toUpperCase();
       const gross=Math.abs(parsePayPalAmount(row["Amount"]));
       const shopifyFee=Math.abs(parsePayPalAmount(row["Fee"]));
       const net=parsePayPalAmount(row["Net"]);
-      const fingerprint=`${order}|${date}|${gross.toFixed(2)}`;
       let reason="";
       if(!order) reason="Order is blank";
       else if(!date) reason="Date is blank";
-      else if(existingFingerprints.has(fingerprint)||seen.has(fingerprint)) reason="Already imported";
-      seen.add(fingerprint);
+      else if(!currency) reason="Currency is blank";
+      else if(!["USD","CAD"].includes(currency)) reason="Unsupported currency";
+      else if(existingOrders.has(orderKey)||seenOrders.has(orderKey)) reason="Order already exists";
+      if(orderKey) seenOrders.add(orderKey);
       const imported={
-        order,date,gross,shopifyFee,internationalFee:0,net,
+        order,date,currency,gross,shopifyFee,internationalFee:0,net,
         refunded:String(row["Type"]||"").toLowerCase().includes("refund")?"Yes":"No",
         customer:"",email:"",country:"",importSource:"Shopify CSV"
       };
@@ -585,9 +591,9 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     if(tab==="rtf"){
       $("#importDialogTitle").textContent="RTF / Shopify File Import Preview";
       $("#importFoundLabel").textContent="Transaction rows found";
-      $("#importNote").textContent="The Shopify importer uses only the fields needed by this portal: Order, Transaction Date, Amount, Fee and Net. All other Shopify export columns are ignored.";
-      $("#importPreviewHead").innerHTML='<tr><th>Status</th><th>Date</th><th>Order</th><th>Gross</th><th>Shopify Fee</th><th>Net</th><th>Refunded</th><th>Reason</th></tr>';
-      $("#importPreviewBody").innerHTML=prepared.map(x=>{ const r=x.row; return `<tr><td class="${x.skip?"status-skip":"status-good"}">${x.skip?"Skip":"Import"}</td><td>${esc(r.date)}</td><td>${esc(r.order||"—")}</td><td>${money(r.gross)}</td><td>${money(r.shopifyFee)}</td><td>${money(r.net)}</td><td>${esc(r.refunded)}</td><td>${esc(x.reason||"Ready")}</td></tr>`; }).join("") || '<tr><td colspan="8"><div class="empty">No Shopify transaction rows were found.</div></td></tr>';
+      $("#importNote").textContent="The Shopify importer uses only the fields needed by this portal: Order, Transaction Date, Currency, Amount, Fee and Net. Existing order numbers are skipped automatically. All other Shopify export columns are ignored.";
+      $("#importPreviewHead").innerHTML='<tr><th>Status</th><th>Date</th><th>Order</th><th>Currency</th><th>Gross</th><th>Shopify Fee</th><th>Net</th><th>Refunded</th><th>Reason</th></tr>';
+      $("#importPreviewBody").innerHTML=prepared.map(x=>{ const r=x.row; return `<tr><td class="${x.skip?"status-skip":"status-good"}">${x.skip?"Skip":"Import"}</td><td>${esc(r.date)}</td><td>${esc(r.order||"—")}</td><td>${esc(r.currency||"—")}</td><td>${money(r.gross)}</td><td>${money(r.shopifyFee)}</td><td>${money(r.net)}</td><td>${esc(r.refunded)}</td><td>${esc(x.reason||"Ready")}</td></tr>`; }).join("") || '<tr><td colspan="9"><div class="empty">No Shopify transaction rows were found.</div></td></tr>';
     }else{
       $("#importDialogTitle").textContent="PayPal File Import Preview";
       $("#importFoundLabel").textContent="Payment rows found";
