@@ -516,14 +516,19 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
              .map(r=>String(r["Reference Txn ID"]||"").trim()).filter(Boolean)
     );
     const existingTxnIds=new Set(allData.paypal.map(r=>String(r.transactionId||"").trim()).filter(Boolean));
-    const seen=new Set();
+    const existingSOs=new Set(allData.paypal.map(r=>String(r.so||"").trim().toUpperCase()).filter(Boolean));
+    const seenTxnIds=new Set();
+    const seenSOs=new Set();
     return rawRows.filter(isPayPalPaymentRow).map(row=>{
       const transactionId=String(row["Transaction ID"]||"").trim();
       const so=extractSO(row["Subject"]);
+      const soKey=String(so||"").trim().toUpperCase();
       let reason="";
       if(!so) reason="SO# not found in Subject";
-      else if(transactionId && (existingTxnIds.has(transactionId)||seen.has(transactionId))) reason="Already imported";
-      if(transactionId) seen.add(transactionId);
+      else if(existingSOs.has(soKey)||seenSOs.has(soKey)) reason="SO# already exists";
+      else if(transactionId && (existingTxnIds.has(transactionId)||seenTxnIds.has(transactionId))) reason="Already imported";
+      if(transactionId) seenTxnIds.add(transactionId);
+      if(soKey) seenSOs.add(soKey);
       const imported={
         paypalAccount:"PayPal",
         so,
@@ -545,18 +550,18 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     });
   }
   function prepareNormalizedPayPalImport(rawRows){
-    const existingFingerprints=new Set(allData.paypal.map(r=>`${String(r.so||"").trim()}|${String(r.currency||"").trim().toUpperCase()}|${num(r.gross).toFixed(2)}`));
-    const seen=new Set();
+    const existingSOs=new Set(allData.paypal.map(r=>String(r.so||"").trim().toUpperCase()).filter(Boolean));
+    const seenSOs=new Set();
     return rawRows.map(row=>{
       const so=String(row["SO#"]??row["SO"]??"").trim();
+      const soKey=so.toUpperCase();
       const currency=String(row["Currency"]||"").trim().toUpperCase();
       const gross=Math.abs(parsePayPalAmount(row["Gross Amount"]));
-      const fingerprint=`${so}|${currency}|${gross.toFixed(2)}`;
       let reason="";
       if(!so) reason="SO# is blank";
+      else if(existingSOs.has(soKey)||seenSOs.has(soKey)) reason="SO# already exists";
       else if(!currency) reason="Currency is blank";
-      else if(existingFingerprints.has(fingerprint)||seen.has(fingerprint)) reason="Already imported";
-      seen.add(fingerprint);
+      if(soKey) seenSOs.add(soKey);
       const refundedRaw=String(row["Refunded"]??"").trim().toLowerCase();
       const imported={
         paypalAccount:"PayPal", so, currency, gross,
