@@ -124,18 +124,18 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
 </dialog>
 
 <dialog id="importDialog" class="upload-preview">
-  <div class="modal-head"><h2>PayPal File Import Preview</h2><button class="close" type="button" id="closeImportDialog">×</button></div>
+  <div class="modal-head"><h2 id="importDialogTitle">File Import Preview</h2><button class="close" type="button" id="closeImportDialog">×</button></div>
   <div class="modal-body">
     <p class="import-note" id="importNote"></p>
     <div class="import-summary">
-      <div class="import-stat"><span>Payment rows found</span><strong id="importFound">0</strong></div>
+      <div class="import-stat"><span id="importFoundLabel">Rows found</span><strong id="importFound">0</strong></div>
       <div class="import-stat"><span>Ready to import</span><strong id="importReady">0</strong></div>
       <div class="import-stat"><span>Skipped</span><strong id="importSkipped">0</strong></div>
       <div class="import-stat"><span>Refunded</span><strong id="importRefunded">0</strong></div>
     </div>
     <div class="import-table-wrap">
       <table class="import-table">
-        <thead><tr><th>Status</th><th>Date</th><th>SO#</th><th>Currency</th><th>Gross</th><th>PayPal Fee</th><th>Net</th><th>Refunded</th><th>Customer</th><th>Email</th><th>Country</th><th>Reason</th></tr></thead>
+        <thead id="importPreviewHead"><tr><th>Status</th><th>Date</th><th>SO#</th><th>Currency</th><th>Gross</th><th>PayPal Fee</th><th>Net</th><th>Refunded</th><th>Customer</th><th>Email</th><th>Country</th><th>Reason</th></tr></thead>
         <tbody id="importPreviewBody"></tbody>
       </table>
     </div>
@@ -211,6 +211,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   let unsubscribers = [];
   let selectedIds = new Set();
   let pendingImportRows = [];
+  let pendingImportTab = "paypal";
   let sortDateDirection = "desc";
   const moneyKeys = new Set(["gross","transactionFee","internationalFee","shopifyFee","net"]);
   const $ = s => document.querySelector(s);
@@ -299,7 +300,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     activeTab=tab; editId=null; selectedIds.clear(); updateSelectionUI();
     document.querySelectorAll(".profile-tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
     $("#tableTitle").textContent=configs[tab].title;
-    $("#uploadCsvBtn").style.display = tab==="paypal" ? "inline-flex" : "none";
+    $("#uploadCsvBtn").style.display = "inline-flex";
     buildTableHeader(); buildForm(); populateDynamicFilters(); updateSortButton(); render();
   }
   function formatHeader(label){
@@ -538,7 +539,33 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     });
   }
 
-  function showImportPreview(prepared){
+  function prepareShopifyImport(rawRows){
+    const existingFingerprints=new Set(allData.rtf.map(r=>`${String(r.order||"").trim()}|${String(r.date||"").trim()}|${num(r.gross).toFixed(2)}`));
+    const seen=new Set();
+    return rawRows.map(row=>{
+      const order=String(row["Order"]||"").trim();
+      const rawDate=String(row["Transaction Date"]||"").trim();
+      const date=rawDate ? rawDate.slice(0,10) : "";
+      const gross=Math.abs(parsePayPalAmount(row["Amount"]));
+      const shopifyFee=Math.abs(parsePayPalAmount(row["Fee"]));
+      const net=parsePayPalAmount(row["Net"]);
+      const fingerprint=`${order}|${date}|${gross.toFixed(2)}`;
+      let reason="";
+      if(!order) reason="Order is blank";
+      else if(!date) reason="Date is blank";
+      else if(existingFingerprints.has(fingerprint)||seen.has(fingerprint)) reason="Already imported";
+      seen.add(fingerprint);
+      const imported={
+        order,date,gross,shopifyFee,internationalFee:0,net,
+        refunded:String(row["Type"]||"").toLowerCase().includes("refund")?"Yes":"No",
+        customer:"",email:"",country:"",importSource:"Shopify CSV"
+      };
+      return {row:imported,skip:!!reason,reason};
+    });
+  }
+
+  function showImportPreview(prepared,tab="paypal"){
+    pendingImportTab=tab;
     pendingImportRows=prepared.filter(x=>!x.skip).map(x=>x.row);
     const skipped=prepared.filter(x=>x.skip).length;
     const refunded=prepared.filter(x=>!x.skip && x.row.refunded==="Yes").length;
@@ -547,11 +574,19 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     $("#importSkipped").textContent=skipped;
     $("#importRefunded").textContent=refunded;
     $("#confirmImportBtn").disabled=pendingImportRows.length===0;
-    $("#importNote").textContent='The importer accepts PayPal CSV exports and prepared PayPal XLSX/CSV reports. For raw PayPal exports it keeps one completed payment row, ignores hold/balancing rows, and extracts SO# from Subject. For prepared reports it maps only the finance columns used by this portal and ignores extra columns.';
-    $("#importPreviewBody").innerHTML=prepared.map(x=>{
-      const r=x.row;
-      return `<tr><td class="${x.skip?"status-skip":"status-good"}">${x.skip?"Skip":"Import"}</td><td>${esc(r.date)}</td><td>${esc(r.so||"—")}</td><td>${esc(r.currency)}</td><td>${money(r.gross)}</td><td>${money(r.transactionFee)}</td><td>${money(r.net)}</td><td>${esc(r.refunded)}</td><td>${esc(r.customer)}</td><td>${esc(r.email)}</td><td>${esc(r.country||"—")}</td><td>${esc(x.reason||"Ready")}</td></tr>`;
-    }).join("") || '<tr><td colspan="12"><div class="empty">No eligible PayPal payment rows were found.</div></td></tr>';
+    if(tab==="rtf"){
+      $("#importDialogTitle").textContent="RTF / Shopify File Import Preview";
+      $("#importFoundLabel").textContent="Transaction rows found";
+      $("#importNote").textContent="The Shopify importer uses only the fields needed by this portal: Order, Transaction Date, Amount, Fee and Net. All other Shopify export columns are ignored.";
+      $("#importPreviewHead").innerHTML='<tr><th>Status</th><th>Date</th><th>Order</th><th>Gross</th><th>Shopify Fee</th><th>Net</th><th>Refunded</th><th>Reason</th></tr>';
+      $("#importPreviewBody").innerHTML=prepared.map(x=>{ const r=x.row; return `<tr><td class="${x.skip?"status-skip":"status-good"}">${x.skip?"Skip":"Import"}</td><td>${esc(r.date)}</td><td>${esc(r.order||"—")}</td><td>${money(r.gross)}</td><td>${money(r.shopifyFee)}</td><td>${money(r.net)}</td><td>${esc(r.refunded)}</td><td>${esc(x.reason||"Ready")}</td></tr>`; }).join("") || '<tr><td colspan="8"><div class="empty">No Shopify transaction rows were found.</div></td></tr>';
+    }else{
+      $("#importDialogTitle").textContent="PayPal File Import Preview";
+      $("#importFoundLabel").textContent="Payment rows found";
+      $("#importNote").textContent='The importer accepts PayPal CSV exports and prepared PayPal XLSX/CSV reports. For raw PayPal exports it keeps one completed payment row, ignores hold/balancing rows, and extracts SO# from Subject. For prepared reports it maps only the finance columns used by this portal and ignores extra columns.';
+      $("#importPreviewHead").innerHTML='<tr><th>Status</th><th>Date</th><th>SO#</th><th>Currency</th><th>Gross</th><th>PayPal Fee</th><th>Net</th><th>Refunded</th><th>Customer</th><th>Email</th><th>Country</th><th>Reason</th></tr>';
+      $("#importPreviewBody").innerHTML=prepared.map(x=>{ const r=x.row; return `<tr><td class="${x.skip?"status-skip":"status-good"}">${x.skip?"Skip":"Import"}</td><td>${esc(r.date)}</td><td>${esc(r.so||"—")}</td><td>${esc(r.currency)}</td><td>${money(r.gross)}</td><td>${money(r.transactionFee)}</td><td>${money(r.net)}</td><td>${esc(r.refunded)}</td><td>${esc(r.customer)}</td><td>${esc(r.email)}</td><td>${esc(r.country||"—")}</td><td>${esc(x.reason||"Ready")}</td></tr>`; }).join("") || '<tr><td colspan="12"><div class="empty">No eligible PayPal payment rows were found.</div></td></tr>';
+    }
     $("#importDialog").showModal();
   }
   async function handleUploadFile(file){
@@ -564,34 +599,40 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
       const rows=XLSX.utils.sheet_to_json(ws,{defval:"",raw:false});
       if(!rows.length) throw new Error("The uploaded file is empty.");
       const first=rows[0];
-      const isRawPayPal=["Type","Status","Currency","Gross","Fee","Net","Transaction ID","Subject"].every(k=>k in first);
-      const isPreparedReport=["SO#","Currency","Gross Amount","PayPal Transaction fee","Net Total"].every(k=>k in first);
-      if(isRawPayPal) showImportPreview(preparePayPalImport(rows));
-      else if(isPreparedReport) showImportPreview(prepareNormalizedPayPalImport(rows));
-      else throw new Error("File format not recognized. Upload either the PayPal transaction export or the PayPal finance report XLSX/CSV.");
+      if(activeTab==="rtf"){
+        const isShopify=["Transaction Date","Order","Amount","Fee","Net"].every(k=>k in first);
+        if(isShopify) showImportPreview(prepareShopifyImport(rows),"rtf");
+        else throw new Error("Shopify file format not recognized. Upload the Shopify payment transactions CSV/XLSX export.");
+      }else{
+        const isRawPayPal=["Type","Status","Currency","Gross","Fee","Net","Transaction ID","Subject"].every(k=>k in first);
+        const isPreparedReport=["SO#","Currency","Gross Amount","PayPal Transaction fee","Net Total"].every(k=>k in first);
+        if(isRawPayPal) showImportPreview(preparePayPalImport(rows),"paypal");
+        else if(isPreparedReport) showImportPreview(prepareNormalizedPayPalImport(rows),"paypal");
+        else throw new Error("File format not recognized. Upload either the PayPal transaction export or the PayPal finance report XLSX/CSV.");
+      }
     }catch(err){ console.error(err); toast(err.message||"Could not read the uploaded file."); }
     finally{ $("#csvFileInput").value=""; }
   }
 
-  async function confirmPayPalImport(){
+  async function confirmFileImport(){
     if(!pendingImportRows.length)return;
     const btn=$("#confirmImportBtn"); btn.disabled=true; const original=btn.textContent; btn.textContent="Importing...";
     try{
       if(firebaseReady){
         for(const r of pendingImportRows){
-          await addDoc(collection(db,configs.paypal.collection),{...r,createdAt:serverTimestamp()});
+          await addDoc(collection(db,configs[pendingImportTab].collection),{...r,createdAt:serverTimestamp()});
         }
       }else{
         const now=new Date().toISOString();
         const newRows=pendingImportRows.map(r=>({id:crypto.randomUUID(),...r,createdAt:now}));
-        allData.paypal=[...newRows,...allData.paypal];
-        persistLocal("paypal");
-        if(activeTab==="paypal") render();
+        allData[pendingImportTab]=[...newRows,...allData[pendingImportTab]];
+        persistLocal(pendingImportTab);
+        if(activeTab===pendingImportTab) render();
       }
       const count=pendingImportRows.length;
       pendingImportRows=[];
       $("#importDialog").close();
-      toast(`${count} PayPal ${count===1?"entry":"entries"} imported`);
+      toast(`${count} ${pendingImportTab==="paypal"?"PayPal":"Shopify"} ${count===1?"entry":"entries"} imported`);
     }catch(err){
       console.error(err); toast("Import failed. Check Firebase settings/rules.");
     }finally{
@@ -656,7 +697,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   $("#csvFileInput").addEventListener("change",e=>handleUploadFile(e.target.files?.[0]));
   $("#closeImportDialog").addEventListener("click",()=>$("#importDialog").close());
   $("#cancelImportBtn").addEventListener("click",()=>$("#importDialog").close());
-  $("#confirmImportBtn").addEventListener("click",confirmPayPalImport);
+  $("#confirmImportBtn").addEventListener("click",confirmFileImport);
   $("#addBtn").addEventListener("click",openAdd); $("#downloadBtn").addEventListener("click",e=>{ e.stopPropagation(); $("#downloadMenu").classList.toggle("show"); }); $("#sortDateBtn").addEventListener("click",toggleDateSort);
   $("#clearFiltersBtn").addEventListener("click",clearFilters);
   $("#downloadMenu").addEventListener("click",e=>{ const mode=e.target.closest("button")?.dataset.download; if(!mode)return; if(mode==="selected" && !selectedIds.size){toast("Select at least one entry first.");return;} downloadExcel(mode); $("#downloadMenu").classList.remove("show"); });
