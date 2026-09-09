@@ -373,6 +373,14 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
       return true;
     });
     return rows.sort((a,b)=>{
+      if(activeTab==="rtf"){
+        const orderNum = r => {
+          const m=String(r.order||"").match(/(\d+)(?!.*\d)/);
+          return m ? Number(m[1]) : 0;
+        };
+        const oa=orderNum(a), ob=orderNum(b);
+        if(oa!==ob) return sortDateDirection==="asc" ? oa-ob : ob-oa;
+      }
       const da=recordDate(a), db=recordDate(b);
       const ta=da&&!isNaN(da)?da.getTime():0;
       const tb=db&&!isNaN(db)?db.getTime():0;
@@ -684,7 +692,12 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     }
   }
 
-  function updateSortButton(){ const b=$("#sortDateBtn"); if(b) b.textContent=sortDateDirection==="desc"?"Date: Newest ↓":"Date: Oldest ↑"; }
+  function updateSortButton(){
+    const b=$("#sortDateBtn");
+    if(!b) return;
+    if(activeTab==="rtf") b.textContent=sortDateDirection==="desc"?"Order: Highest ↓":"Order: Lowest ↑";
+    else b.textContent=sortDateDirection==="desc"?"Date: Newest ↓":"Date: Oldest ↑";
+  }
   function toggleDateSort(){ sortDateDirection=sortDateDirection==="desc"?"asc":"desc"; updateSortButton(); render(); }
   function clearFilters(){ ["monthFilter","yearFilter","countryFilter","currencyFilter"].forEach(id=>$("#"+id).value=""); $("#searchFilter").value=""; render(); }
   function updateSelectionUI(){
