@@ -223,10 +223,30 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   function num(v){ const n=parseFloat(v); return Number.isFinite(n)?n:0; }
   function money(v){ return new Intl.NumberFormat("en-CA",{style:"currency",currency:"USD"}).format(num(v)); }
   function plainAmount(v){ return new Intl.NumberFormat("en-CA",{minimumFractionDigits:2,maximumFractionDigits:2}).format(num(v)); }
+  function parsePortalDate(v){
+    if(!v) return null;
+    if(v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(),v.getMonth(),v.getDate());
+    const text=String(v).trim();
+    let m=text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if(m) return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+    m=text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})$/);
+    if(m){
+      let year=Number(m[3]);
+      if(year<100) year += year>=70 ? 1900 : 2000;
+      return new Date(year,Number(m[1])-1,Number(m[2]));
+    }
+    const d=new Date(text);
+    return isNaN(d) ? null : new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  }
+  function normalizePortalDate(v){
+    const d=parsePortalDate(v);
+    if(!d || isNaN(d)) return "";
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
   function formatDisplayDate(v){
     if(!v) return "—";
-    const d=new Date(String(v)+"T00:00:00");
-    if(isNaN(d)) return esc(v);
+    const d=parsePortalDate(v);
+    if(!d || isNaN(d)) return esc(v);
     return d.toLocaleDateString("en-CA",{year:"numeric",month:"short",day:"2-digit"});
   }
 
@@ -349,7 +369,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     }).join("");
   }
   function recordDate(r){
-    if(r.date) return new Date(r.date+"T00:00:00");
+    if(r.date) return parsePortalDate(r.date);
     if(r.createdAt?.toDate) return r.createdAt.toDate();
     if(r.createdAt) return new Date(r.createdAt);
     return null;
@@ -594,8 +614,8 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     return rawRows.map(row=>{
       const order=String(row["Order"]||"").trim();
       const orderKey=order.toUpperCase();
-      const rawDate=String(row["Transaction Date"]||"").trim();
-      const date=rawDate ? rawDate.slice(0,10) : "";
+      const rawDate=row["Transaction Date"]||"";
+      const date=normalizePortalDate(rawDate);
       const currency=String(row["Currency"]||row["Presentment Currency"]||"").trim().toUpperCase();
       const gross=Math.abs(parsePayPalAmount(row["Amount"]));
       const shopifyFee=Math.abs(parsePayPalAmount(row["Fee"]));
