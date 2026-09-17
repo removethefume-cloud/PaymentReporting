@@ -29,7 +29,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
 .auth-card{width:min(440px,100%);background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px;box-shadow:0 18px 55px rgba(0,0,0,.10)}
 .auth-logo{display:flex;justify-content:center;margin-bottom:24px}.auth-logo img{width:260px;max-width:82%;height:auto;display:block}
 .auth-card h1{font-size:22px;margin:0 0 7px;text-align:center;color:#20242a}.auth-subtitle{margin:0 0 22px;text-align:center;font-size:13px;color:var(--muted);line-height:1.5}
-.auth-field{margin-bottom:14px}.auth-field label{display:block;font-size:11px;font-weight:800;color:#545a64;margin-bottom:6px}.auth-field input{height:44px}
+.auth-field{margin-bottom:14px}.auth-field label{display:block;font-size:11px;font-weight:800;color:#545a64;margin-bottom:6px}.auth-field input{height:44px}.password-wrap{position:relative}.password-wrap input{padding-right:48px}.password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;background:transparent;border-radius:6px;cursor:pointer;display:grid;place-items:center;color:#59606a}.password-toggle:hover{background:#f1f2f4}.password-toggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.auth-links{display:flex;justify-content:flex-end;margin-top:8px}.auth-link{border:0;background:transparent;padding:2px 0;color:#555d68;font-size:12px;font-weight:700;cursor:pointer}.auth-link:hover{text-decoration:underline;color:#20242a}
 .auth-submit{width:100%;height:44px;justify-content:center;margin-top:4px}.auth-error{display:none;margin-top:13px;padding:10px 12px;border:1px solid #f1b4ae;background:#fff5f4;color:#b42318;border-radius:7px;font-size:12px;line-height:1.4}.auth-error.show{display:block}
 .auth-help{margin:15px 0 0;text-align:center;font-size:11px;color:#858b94;line-height:1.45}
 .app.auth-hidden{display:none}.header-account{display:flex;align-items:center;gap:10px}.user-email{font-size:12px;color:#656b74;font-weight:700;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.signout-btn{height:34px;padding:0 11px;font-size:12px}
@@ -57,8 +57,9 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     <p class="auth-subtitle">Sign in with your approved Plymovent account to access the finance reports.</p>
     <form id="loginForm">
       <div class="auth-field"><label for="loginEmail">Email address</label><input id="loginEmail" name="email" type="email" autocomplete="username" placeholder="name@plymovent.com" required></div>
-      <div class="auth-field"><label for="loginPassword">Password</label><input id="loginPassword" name="password" type="password" autocomplete="current-password" required></div>
+      <div class="auth-field"><label for="loginPassword">Password</label><div class="password-wrap"><input id="loginPassword" name="password" type="password" autocomplete="current-password" required><button class="password-toggle" id="togglePassword" type="button" aria-label="Show password" title="Show password"><svg id="passwordEyeIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.6"></circle></svg></button></div></div>
       <button class="btn primary auth-submit" id="loginBtn" type="submit">Sign in</button>
+      <div class="auth-links"><button class="auth-link" id="forgotPasswordBtn" type="button">Forgot password?</button></div>
       <div class="auth-error" id="authError"></div>
     </form>
     <p class="auth-help">Use the password created for this Firebase finance portal, not your Outlook password.</p>
@@ -149,7 +150,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
   import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
   // =========================
   // FIREBASE CONFIG
@@ -745,6 +746,34 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     else rows=filtered();
     exportRowsToExcel(rows,mode.charAt(0).toUpperCase()+mode.slice(1));
   }
+
+  $("#togglePassword").addEventListener("click",()=>{
+    const input=$("#loginPassword");
+    const showing=input.type==="text";
+    input.type=showing?"password":"text";
+    $("#togglePassword").setAttribute("aria-label",showing?"Show password":"Hide password");
+    $("#togglePassword").title=showing?"Show password":"Hide password";
+  });
+
+  $("#forgotPasswordBtn").addEventListener("click",async()=>{
+    clearAuthError();
+    const email=$("#loginEmail").value.trim().toLowerCase();
+    if(!email){ showAuthError("Enter your email address first, then click Forgot password."); $("#loginEmail").focus(); return; }
+    if(!email.endsWith("@plymovent.com")){ showAuthError("Please use an approved @plymovent.com email address."); return; }
+    const btn=$("#forgotPasswordBtn"), original=btn.textContent;
+    btn.disabled=true; btn.textContent="Sending...";
+    try{
+      await sendPasswordResetEmail(auth,email);
+      showAuthError("Password reset email sent. Please check your inbox and follow the link to create a new password.");
+      const box=$("#authError"); if(box){ box.style.background="#f0f9f2"; box.style.borderColor="#a8d5b2"; box.style.color="#256b35"; }
+    }catch(err){
+      console.error(err);
+      const code=String(err?.code||"");
+      if(code.includes("invalid-email")) showAuthError("Please enter a valid email address.");
+      else if(code.includes("too-many-requests")) showAuthError("Too many requests. Please try again later.");
+      else showAuthError("Could not send the password reset email. Please try again.");
+    }finally{ btn.disabled=false; btn.textContent=original; }
+  });
 
   $("#loginForm").addEventListener("submit",async e=>{
     e.preventDefault();
