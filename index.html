@@ -491,8 +491,16 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
 
   function parsePayPalDate(v){
     const text=String(v||"").trim();
-    const m=text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-    if(m) return `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
+    // PayPal exports use DD/MM/YYYY. Parse explicitly rather than relying on locale.
+    const m=text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2}|\d{4})$/);
+    if(m){
+      let year=Number(m[3]);
+      if(year<100) year+=year>=70?1900:2000;
+      const day=Number(m[1]), month=Number(m[2]);
+      const d=new Date(year,month-1,day);
+      if(d.getFullYear()!==year || d.getMonth()!==month-1 || d.getDate()!==day) return "";
+      return `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    }
     const d=new Date(text);
     return isNaN(d) ? new Date().toISOString().slice(0,10) : d.toISOString().slice(0,10);
   }
