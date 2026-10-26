@@ -180,6 +180,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
         ["internationalFee","International currency payout fee","number"],
         ["net","Net Total","number"],
         ["refunded","Refunded","selectRefund"],
+        ["amountRefunded","Amount Refunded","number"],
         ["customer","Customer name","text"],
         ["email","Email","email"],
         ["country","Customer Country","selectCountry"]
@@ -197,6 +198,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
         ["internationalFee","International currency payout fee","number"],
         ["net","Net Total","number"],
         ["refunded","Refunded","selectRefund"],
+        ["amountRefunded","Amount Refunded","number"],
         ["customer","Customer name","text"],
         ["email","Email","email"],
         ["country","Customer Country","selectCountry"]
@@ -215,7 +217,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   let pendingImportRows = [];
   let pendingImportTab = "paypal";
   let sortDateDirection = "desc";
-  const moneyKeys = new Set(["gross","transactionFee","internationalFee","shopifyFee","net"]);
+  const moneyKeys = new Set(["gross","transactionFee","internationalFee","shopifyFee","net","amountRefunded"]);
   const $ = s => document.querySelector(s);
 
   function isConfigured(){ return !Object.values(firebaseConfig).some(v => String(v).includes("YOUR_")); }
@@ -360,14 +362,26 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
     const cols=configs[activeTab].columns;
     $("#modalTitle").textContent=`${editId?"Edit":"Add"} ${activeTab==="paypal"?"PayPal":"RTF"} Entry`;
     $("#formGrid").innerHTML=cols.filter(c=>c[3]!=="auto").map(([key,label,type])=>{
-      const requiredKeys = activeTab==="paypal" ? new Set(["so","date","currency","gross","transactionFee","net"]) : new Set(["order","date","currency","gross","shopifyFee","net"]);
+      const requiredKeys = activeTab==="paypal" ? new Set(["so","date","currency","gross","transactionFee","net"]) : new Set(["order","date","currency","gross","shopifyFee","net","amountRefunded"]);
       const req = requiredKeys.has(key) ? "required" : "";
       const optional = requiredKeys.has(key) ? "" : ' <span style="font-weight:500;text-transform:none;color:#999">(optional)</span>';
       if(type==="selectCurrency") return `<div class="field"><label>${label}</label><select name="${key}" ${req}><option value="USD">USD</option><option value="CAD">CAD</option></select></div>`;
       if(type==="selectRefund") return `<div class="field"><label>${label}${optional}</label><select name="${key}"><option value="No">No</option><option value="Yes">Yes</option></select></div>`;
       if(type==="selectCountry") return `<div class="field"><label>${label}${optional}</label><select name="${key}"><option value="">Select country</option><option value="Canada">Canada</option><option value="USA">USA</option></select></div>`;
-      return `<div class="field"><label>${label}${optional}</label><input name="${key}" type="${type}" ${type==="number"?'step="0.01"':''} ${req}></div>`;
+      return `<div class="field" ${key==="amountRefunded"?'data-refund-amount style="display:none"':""}><label>${label}${optional}</label><input name="${key}" type="${type}" ${type==="number"?'step="0.01"':''} ${req}></div>`;
     }).join("");
+    const refundedSelect = $("#entryForm select[name='refunded']");
+    if(refundedSelect) refundedSelect.addEventListener("change", updateRefundAmountVisibility);
+    updateRefundAmountVisibility();
+  }
+  function updateRefundAmountVisibility(){
+    const select=$("#entryForm select[name='refunded']");
+    const wrapper=$("#entryForm [data-refund-amount]");
+    if(!select || !wrapper) return;
+    const isRefunded=select.value==="Yes";
+    wrapper.style.display=isRefunded?"":"none";
+    const input=wrapper.querySelector("input");
+    if(input){ input.required=isRefunded; if(!isRefunded) input.value=""; }
   }
   function recordDate(r){
     if(r.date) return parsePortalDate(r.date);
@@ -447,6 +461,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
   function openEdit(id){ if(!canEdit()){ toast("You do not have permission to edit entries."); return; }
     editId=id; buildForm(); const r=allData[activeTab].find(x=>x.id===id); if(!r)return;
     configs[activeTab].columns.forEach(([key])=>{ const el=$("#entryForm").elements[key]; if(el)el.value=r[key]??""; });
+    updateRefundAmountVisibility();
     $("#modalTitle").textContent=`Edit ${activeTab==="paypal"?"PayPal":"RTF"} Entry`; $("#entryDialog").showModal();
   }
   async function saveForm(e){
@@ -455,7 +470,8 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
       if(mode==="auto") return;
       let v=fd.get(key); obj[key]=type==="number"?(v===""?0:num(v)):(v??"");
     });
-    if(activeTab==="paypal"){ obj.paypalAccount="PayPal"; obj.date = new Date().toISOString().slice(0,10); } // account is automatic; date supports month/year filtering
+    if(obj.refunded!=="Yes") obj.amountRefunded=0;
+    if(activeTab==="paypal"){ obj.paypalAccount="PayPal"; } // account is automatic; date supports month/year filtering
     try{
       if(firebaseReady){
         if(editId) await updateDoc(doc(db,configs[activeTab].collection,editId),{...obj,updatedAt:serverTimestamp()});
@@ -575,6 +591,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
         internationalFee:0,
         net:parsePayPalAmount(row["Net"]),
         refunded:refundRefs.has(transactionId)?"Yes":"No",
+        amountRefunded:0,
         customer:String(row["Name"]||"").trim(),
         email:String(row["From Email Address"]||"").trim(),
         country:normalizePayPalCountry(row),
@@ -606,6 +623,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
         internationalFee:Math.abs(parsePayPalAmount(row["International currency payout fee"])),
         net:parsePayPalAmount(row["Net Total"]),
         refunded:["yes","y","true","1","refunded"].includes(refundedRaw)?"Yes":"No",
+        amountRefunded:Math.abs(parsePayPalAmount(row["Amount Refunded"])),
         customer:String(row["Customer name"]??row["Customer Name"]??"").trim(),
         email:String(row["Email"]||"").trim(),
         country:normalizeCountryValue(row["Customer Country"]),
@@ -640,6 +658,7 @@ dialog{border:0;border-radius:12px;padding:0;box-shadow:0 28px 90px rgba(0,0,0,.
       const imported={
         order,date,currency,gross,shopifyFee,internationalFee:0,net,
         refunded:String(row["Type"]||"").toLowerCase().includes("refund")?"Yes":"No",
+        amountRefunded:0,
         customer:"",email:"",country,importSource:"Shopify CSV"
       };
       return {row:imported,skip:!!reason,reason};
